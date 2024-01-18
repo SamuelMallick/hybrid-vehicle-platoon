@@ -1,0 +1,9 @@
+numpy==1.25.2
+casadi>==3.6.3
+scipy==1.11.2
+gymnasium==0.29.1
+csnlp==1.5.9
+mpcrl==1.1.9
+matplotlib==3.7.3
+dmpcrl==1.0.0
+dmpcpwa==0.0.1

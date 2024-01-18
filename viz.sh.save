@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# Define a list of parameters
+n=5
+N=10
+
+# Iterate through the parameters
+for Q in {0..1}; do
+    for LT in {1..2}; do
+        python examples/ACC_fleet/fleet_cent_mld.py $n $N $Q 0 1 $LT
+    
+done
+done
+
