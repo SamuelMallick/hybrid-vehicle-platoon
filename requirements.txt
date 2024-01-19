@@ -5,5 +5,5 @@ gymnasium==0.29.1
 csnlp==1.5.9
 mpcrl==1.1.9
 matplotlib==3.7.3
-dmpcrl==1.0.0
+dmpcrl==1.0.1
 dmpcpwa==0.0.1
