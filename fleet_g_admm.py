@@ -1,31 +1,32 @@
 import logging
+import pickle
 import sys
 
 import casadi as cs
 import numpy as np
-from ACC_env import CarFleet
-from ACC_model import ACC
 from csnlp import Nlp
+from dmpcpwa.agents.g_admm_coordinator import GAdmmCoordinator
+from dmpcpwa.mpc.mpc_switching import MpcSwitching
 from dmpcrl.core.admm import g_map
 from gymnasium.wrappers import TimeLimit
 from mpcrl.wrappers.agents import Log
 from mpcrl.wrappers.envs import MonitorEpisodes
-from plot_fleet import plot_fleet
 
-from dmpcpwa.agents.g_admm_coordinator import GAdmmCoordinator
-from dmpcpwa.mpc.mpc_switching import MpcSwitching
+from ACC_env import CarFleet
+from ACC_model import ACC
+from plot_fleet import plot_fleet
 
 np.random.seed(2)
 
 PLOT = True
 SAVE = False
 
-n = 3  # num cars
+n = 5  # num cars
 N = 5  # controller horizon
 COST_2_NORM = True
 DISCRETE_GEARS = False
 HOMOGENOUS = True
-LEADER_TRAJ = 2  # "1" - constant velocity leader traj. Vehicles start from random ICs. "2" - accelerating leader traj. Vehicles start in perfect platoon.
+LEADER_TRAJ = 1  # "1" - constant velocity leader traj. Vehicles start from random ICs. "2" - accelerating leader traj. Vehicles start in perfect platoon.
 
 if len(sys.argv) > 1:
     n = int(sys.argv[1])
@@ -44,7 +45,7 @@ random_ICs = False
 if LEADER_TRAJ == 1:
     random_ICs = True
 
-ep_len = 50  # length of episode (sim len)
+ep_len = 100  # length of episode (sim len)
 Adj = np.zeros((n, n))  # adjacency matrix
 if n > 1:
     for i in range(n):  # make it chain coupling
@@ -196,28 +197,55 @@ class LocalMpc(MpcSwitching):
 
         # solver
 
-        opts = {
-            "expand": True,
-            "print_time": False,
-            "bound_consistency": True,
-            "calc_lam_x": True,
-            "calc_lam_p": False,
-            # "jit": True,
-            # "jit_cleanup": True,
-            "ipopt": {
-                # "linear_solver": "ma97",
-                # "linear_system_scaling": "mc19",
-                # "nlp_scaling_method": "equilibration-based",
+        solver = "qpoases"  # "qpoases"
+        if solver == "ipopt":
+            opts = {
+                "expand": True,
+                "show_eval_warnings": True,
+                "warn_initial_bounds": True,
+                "print_time": False,
+                "record_time": True,
+                "bound_consistency": True,
+                "calc_lam_x": True,
+                "calc_lam_p": False,
+                # "jit": True,
+                # "jit_cleanup": True,
+                "ipopt": {
+                    # "linear_solver": "ma97",
+                    # "linear_system_scaling": "mc19",
+                    # "nlp_scaling_method": "equilibration-based",
+                    "max_iter": 500,
+                    "sb": "yes",
+                    "print_level": 0,
+                },
+            }
+        elif solver == "qrqp":
+            opts = {
+                "expand": True,
+                "print_time": False,
+                "record_time": True,
+                "error_on_fail": False,
+                "print_info": False,
+                "print_iter": False,
+                "print_header": False,
                 "max_iter": 2000,
-                "sb": "yes",
-                "print_level": 0,
-            },
-        }
-        self.init_solver(opts, solver="ipopt")
+            }
+        elif solver == "qpoases":
+            opts = {
+                "print_time": False,
+                "record_time": True,
+                "error_on_fail": True,
+                "printLevel": "none",
+            }
+        else:
+            raise RuntimeError("No solver type defined.")
+
+        self.init_solver(opts, solver=solver)
 
 
 class TrackingGAdmmCoordinator(GAdmmCoordinator):
     best_warm_starts = []
+    solve_times = []
 
     def on_timestep_end(self, env, episode: int, timestep: int) -> None:
         # time step starts from 1, so this will set the cost accurately for the next time-step
@@ -241,12 +269,6 @@ class TrackingGAdmmCoordinator(GAdmmCoordinator):
             ]
         ]
 
-        # also max control as warm start
-        warm_start.append([1 * np.ones((nu_l, N)) for i in range(n)])
-
-        # min control as warm start
-        warm_start.append([-np.ones((nu_l, N)) for i in range(n)])
-
         # shifted previous solution as warm start
         if self.prev_sol is not None:
             warm_start.append(
@@ -260,6 +282,8 @@ class TrackingGAdmmCoordinator(GAdmmCoordinator):
         best_control = [np.zeros((nu_l, N)) for i in range(n)]
         counter = 0
         self.best_warm_starts.append(counter)
+
+        temp_solve_times = []
         for u in warm_start:
             counter += 1
             u_opt, sol_list, error_flag, infeas_flag = super().g_admm_control(
@@ -267,6 +291,7 @@ class TrackingGAdmmCoordinator(GAdmmCoordinator):
             )
             if not error_flag and not infeas_flag:
                 cost = sum(sol_list[i].f for i in range(n))
+                temp_solve_times.append(self.prev_sol_time)
             else:
                 cost = float("inf")
             if cost < best_cost:
@@ -274,7 +299,13 @@ class TrackingGAdmmCoordinator(GAdmmCoordinator):
                 best_control = u_opt
                 self.best_warm_starts[-1] = counter
 
-        return cs.DM(best_control), None
+        if best_cost == float("inf"):
+            self.solve_times.append(0.0)
+            raise RuntimeError("No solution found for any of the warm starts")
+            # return cs.DM(warm_start[0]), sol_list, True, True
+        else:
+            self.solve_times.append(max(temp_solve_times))
+            return cs.DM(best_control), None, None, None
 
 
 # env
@@ -309,6 +340,7 @@ for i in range(n):
         )
     local_fixed_dist_parameters.append(local_mpcs[i].fixed_pars_init)
 # coordinator
+iters = 100  # number of admm iters
 agent = Log(
     TrackingGAdmmCoordinator(
         local_mpcs,
@@ -317,6 +349,7 @@ agent = Log(
         G_map,
         Adj,
         local_mpcs[0].rho,
+        admm_iters=iters,
     ),
     level=logging.DEBUG,
     log_frequencies={"on_timestep_end": 200},
@@ -336,6 +369,24 @@ else:
 
 print(f"Return = {sum(R.squeeze())}")
 print(f"Violations = {env.unwrapped.viol_counter}")
+print(f"Run_times_av: {sum(agent.solve_times)/len(agent.solve_times)}")
 print(f"Warm starts: {agent.best_warm_starts}")
 
 plot_fleet(n, X, U, R, leader_state)
+
+if SAVE:
+    with open(
+        f"gadmm_n_{n}_N_{N}_Q_{COST_2_NORM}_DG_{DISCRETE_GEARS}_HOM_{HOMOGENOUS}_LT_{LEADER_TRAJ}"
+        # + datetime.datetime.now().strftime("%d%H%M%S%f")
+        + ".pkl",
+        "wb",
+    ) as file:
+        pickle.dump(X, file)
+        pickle.dump(U, file)
+        pickle.dump(R, file)
+        pickle.dump(agent.solve_times, file)
+        pickle.dump(
+            [], file
+        )  # empty list where node count would be for MIP approaches, to make compatible with plotting scripts
+        pickle.dump(env.unwrapped.viol_counter[0], file)
+        pickle.dump(leader_state, file)
