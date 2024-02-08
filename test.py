@@ -2,7 +2,6 @@ import pickle
 
 import matplotlib.pyplot as plt
 import numpy as np
-
 from examples.ACC_fleet.ACC_model import ACC
 
 plt.rc("text", usetex=True)

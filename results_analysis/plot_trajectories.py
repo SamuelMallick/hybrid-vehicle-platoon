@@ -3,7 +3,7 @@ import pickle
 import matplotlib.pyplot as plt
 import numpy as np
 
-from dmpcpwa.utils.tikz import save2tikz
+# from dmpcpwa.utils.tikz import save2tikz
 
 plt.rc("text", usetex=True)
 plt.rc("font", size=14)
@@ -11,15 +11,15 @@ plt.style.use("bmh")
 
 nx_l = 2
 plot_len = 100
-name = "decent"
+name = "gadmm"
 DG = False
 Q = True
 HOM = True
 n = 5
 N = 5
-LT = 2
+LT = 1
 with open(
-    f"{name}_n_{n}_N_{N}_Q_{Q}_DG_{DG}_HOM_{HOM}_LT_{LT}.pkl",
+    f"data/{name}_n_{n}_N_{N}_Q_{Q}_DG_{DG}_HOM_{HOM}_LT_{LT}.pkl",
     "rb",
 ) as file:
     X = pickle.load(file)
@@ -56,7 +56,7 @@ axs[0].set_ylim(0, ylim)
 axs[1].set_xlabel(r"time step $k$")
 axs[0].legend(["reference"])
 
-save2tikz(plt.gcf())
+# save2tikz(plt.gcf())
 
 _, axs = plt.subplots(1, 1, constrained_layout=True, sharex=True)
 axs.plot(U)

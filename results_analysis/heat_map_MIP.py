@@ -3,7 +3,6 @@ import pickle
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-
 from dmpcpwa.utils.tikz import save2tikz
 
 plt.style.use("bmh")

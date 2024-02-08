@@ -1,7 +1,6 @@
 import pickle
 
 import matplotlib.pyplot as plt
-
 from dmpcpwa.utils.tikz import save2tikz
 
 plt.rc("text", usetex=True)

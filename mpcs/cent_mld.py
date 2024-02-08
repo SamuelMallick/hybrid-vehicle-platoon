@@ -1,8 +1,8 @@
 import gurobipy as gp
 import numpy as np
-from ACC_model import ACC
-
 from dmpcpwa.mpc.mpc_mld_cent_decup import MpcMldCentDecup
+
+from ACC_model import ACC
 
 
 class MPCMldCent(MpcMldCentDecup):
