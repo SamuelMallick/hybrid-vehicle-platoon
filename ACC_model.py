@@ -388,26 +388,27 @@ class ACC:
 
 
 if __name__ == "__main__":
-    # check validity of PWA approximation
+    # check validity of PWA approximation for 1 vehicle
 
     acc = ACC(0, 0)
     pwa_sys = acc.get_pwa_system()
 
     test_len = 100
     np.random.seed(0)
-    x0 = np.array([[10], [5], [20], [6]])
-    u = np.random.random((2, test_len))  # random control samples between 0 and 1
-    x_nl = np.zeros((4, test_len))  # non-linear traj
-    x_pwa = np.zeros((4, test_len))  # pwa traj
+    x0 = np.array([[10], [5]])
+    u = np.random.random((1, test_len))  # random control samples between 0 and 1
+    x_nl = np.zeros((2, test_len))  # non-linear traj
+    x_pwa = np.zeros((2, test_len))  # pwa traj
 
     # set IC
     x_nl[:, [0]] = x0
     x_pwa[:, [0]] = x0
     for t in range(test_len - 1):
         # step non linear
-        x_nl[:, [t + 1]] = acc.step_car_dynamics_nl(x_nl[:, [t]], u[:, [t]], 2, acc.ts)
+        j = acc.get_pwa_gear_from_speed(x_nl[1, [t]])
+        x_nl[:, [t + 1]] = acc.step_car_dynamics_nl(x_nl[:, [t]], u[:, [t]], np.array([[j]]), 1, acc.ts)
         x_pwa[:, [t + 1]] = acc.step_car_dynamics_pwa(
-            x_nl[:, [t]], u[:, [t]], 2, acc.ts
+            x_nl[:, [t]], u[:, [t]], 1, acc.ts
         )
 
     _, axs = plt.subplots(2, 1, constrained_layout=True, sharex=True)
