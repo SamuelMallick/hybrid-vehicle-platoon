@@ -13,7 +13,7 @@ from mpcrl.wrappers.agents import Log
 from mpcrl.wrappers.envs import MonitorEpisodes
 
 from ACC_env import CarFleet
-from ACC_model import ACC
+from models import ACC
 from plot_fleet import plot_fleet
 
 np.random.seed(2)

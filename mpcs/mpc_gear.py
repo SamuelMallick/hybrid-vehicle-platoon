@@ -2,7 +2,7 @@ import gurobipy as gp
 import numpy as np
 from dmpcpwa.mpc.mpc_mld import MpcMld
 
-from ACC_model import ACC
+from models import ACC
 
 
 class MpcGear(MpcMld):

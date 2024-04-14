@@ -11,7 +11,7 @@ from gymnasium.wrappers import TimeLimit
 from mpcrl.wrappers.envs import MonitorEpisodes
 
 from ACC_env import CarFleet
-from ACC_model import ACC
+from models import ACC
 from mpcs.mpc_gear import MpcGear
 from plot_fleet import plot_fleet
 

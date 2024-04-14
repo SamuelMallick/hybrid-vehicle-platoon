@@ -5,7 +5,29 @@ import gymnasium as gym
 import numpy as np
 import numpy.typing as npt
 
-from ACC_model import ACC
+from models import ACC
+
+ts = 1  # time step size for discretisation
+
+# local costs
+Q_x_l = np.diag([1, 0.1])
+Q_u_l = 1 * np.eye(1)  # penalty on control effort
+Q_du_l = 0 * np.eye(1)  # penalty on variation in control effort
+w = 1e4  # penalty on slack violations
+sep = np.array([[-50], [0]])  # desired seperation between vehicles states
+
+mass = 800  # mass
+m_inhom = [
+    np.random.uniform(725, 1043) for i in range(20)
+]  # mass value for inhomogenous platoon
+x1_min = 0  # min pos
+x1_max = 20000  # max_pos
+x2_min = 3.94  # min velocity
+x2_max = 45.84  # max velocity
+u_max = 1  # max throttle/brake
+a_acc = 2.5  # comfort acc
+a_dec = -2  # comfort dec
+d_safe = 25  # safe pos
 
 
 class CarFleet(gym.Env[npt.NDArray[np.floating], npt.NDArray[np.floating]]):
