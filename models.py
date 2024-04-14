@@ -1,3 +1,5 @@
+from typing import Literal
+
 import matplotlib.pyplot as plt
 import numpy as np
 from dmpcrl.utils.discretisation import forward_euler
@@ -122,21 +124,36 @@ class Vehicle:
 class Platoon:
     """Class for platoon of vehicles."""
 
-    def __init__(self, n: int, masses: list[None] | None = None) -> None:
+    nx_l = Vehicle.nx_l  # dimension of local state for each vehicle
+    nu_l = Vehicle.nu_l  # dimension of local action for each vehicle
+
+    def __init__(
+        self,
+        n: int,
+        vehicle_type: Literal["nonlinear", "pwa_friction", "pwa_gear"],
+        masses: list[None] | None = None,
+    ) -> None:
         """Create platoon with n vehicles vehicles i having mass masses[i]. If masses is None all vehicles have default mass."""
+        if vehicle_type == "nonlinear":
+            vehicle_class = Vehicle
+        elif vehicle_type == "pwa_friction":
+            vehicle_class = PwaFrictionVehicle
+        elif vehicle_type == "pwa_gear":
+            vehicle_class = PwaGearVehicle
+        else:
+            raise ValueError(f"{vehicle_type} is not a valid vehicle type.")
+
         self.n = n  # number of vehicles in platoon
-        self.nx_l = Vehicle.nx_l  # dimension of local state for each vehicle
-        self.nu_l = Vehicle.nu_l  # dimension of local action for each vehicle
         self.vehicles: list[Vehicle] = []
         if masses is not None:
             if len(masses) != n:
                 raise ValueError(f"Required {n} vehicles masses. Got {len(masses)}.")
 
             for i in range(n):
-                self.vehicles.append(Vehicle(m=masses[i]))
+                self.vehicles.append(vehicle_class(m=masses[i]))
         else:
             for i in range(n):
-                self.vehicles.append(Vehicle())
+                self.vehicles.append(vehicle_class())
 
     def step_platoon(self, x: np.ndarray, u: np.ndarray, j: np.ndarray, ts: float):
         """Steps the platoon with non-linear model by ts seconds. x is state, u is control, j is gears."""
@@ -160,6 +177,14 @@ class Platoon:
             ]
             x = np.vstack(x_new)
         return x
+
+    def get_gear_from_vehicle_velocity(self, i: int, v: float):
+        """Get a gear, given the velocity of a given vehicle in the platoon."""
+        if not isinstance(self.vehicles[i], PwaGearVehicle):
+            raise RuntimeError(
+                f"Gear from velocity asked but the given vehicle {i} is not a PWA vehicle."
+            )
+        return self.vehicles[i].get_gear_from_velocity(v)
 
 
 class PwaFrictionVehicle(Vehicle):
@@ -321,8 +346,8 @@ class PwaGearVehicle(PwaFrictionVehicle):
             "G": G,
         }
 
-    def get_pwa_gear_from_speed(self, v: float):
-        """Get the gear j from the speed v as by the PWA model."""
+    def get_gear_from_velocity(self, v: float):
+        """Get the gear j from the velocity v as by the PWA model."""
         # check gear 2 to 5
         for i in range(len(self.b) - 2):
             if v >= self.v_gear_lim[i] and v < self.v_gear_lim[i + 1]:
@@ -345,16 +370,16 @@ class PwaGearVehicle(PwaFrictionVehicle):
                 + np.array(
                     [[0], [1e-4]]
                 )  # buffer is to have one of the regions as a strict inequality
-            ):  
+            ):
                 # perform a euler discretization of time-step t when stepping
                 x_pwa = (
-                    (np.eye(self.system["A"][j].shape[0]) + ts * self.system["A"][j]) @ x
+                    (np.eye(self.system["A"][j].shape[0]) + ts * self.system["A"][j])
+                    @ x
                     + ts * self.system["B"][j] @ u
                     + ts * self.system["c"][j]
                 )
                 break
         return x_pwa
-
 
     def get_u_for_constant_vel(self, v: float):
         """Get the control input which will keep the velocity v constant, as by the PWA dynamics."""
@@ -376,6 +401,7 @@ class PwaGearVehicle(PwaFrictionVehicle):
 
         raise RuntimeError("Didn't find any PWa region for the given speed!")
 
+
 if __name__ == "__main__":
     # check validity of PWA approximation
     np.random.seed(0)
@@ -386,16 +412,19 @@ if __name__ == "__main__":
     test_len = 100
     ts = 0.1
     x0 = np.array([[10], [15]])  # initial conditions
-    u = 2*np.random.random((1, test_len)) - 1  # random control samples between -1 and 1
+    u = (
+        2 * np.random.random((1, test_len)) - 1
+    )  # random control samples between -1 and 1
     x_1 = np.zeros((2, test_len))  # non-linear traj
     x_2 = np.zeros((2, test_len))  # pwa traj
     x_1[:, [0]] = x0
     x_2[:, [0]] = x0
     for t in range(test_len - 1):
-        j = car_2.get_pwa_gear_from_speed(x_2[1, [t]].item())  # non-linear model uses same gear as PWA
-        x_1[:, [t+1]] = car_1.step(x_2[:, [t]], u[:, [t]].item(), j, ts)
-        x_2[:, [t+1]] = car_2.step_pwa(x_2[:, [t]], u[:, [t]], ts)
-
+        j = car_2.get_pwa_gear_from_speed(
+            x_2[1, [t]].item()
+        )  # non-linear model uses same gear as PWA
+        x_1[:, [t + 1]] = car_1.step(x_2[:, [t]], u[:, [t]].item(), j, ts)
+        x_2[:, [t + 1]] = car_2.step_pwa(x_2[:, [t]], u[:, [t]], ts)
 
     _, axs = plt.subplots(2, 1, constrained_layout=True, sharex=True)
     axs[0].plot(x_1[0, :], "r")
