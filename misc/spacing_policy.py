@@ -19,7 +19,7 @@ class ConstantSpacingPolicy(SpacingPolicy):
         self.d0 = d0
 
     def spacing(self, x: np.ndarray):
-        return np.array([[-self.d0], [0]])
+        return np.array([-self.d0, 0])
 
 
 class ConstantTimePolicy(SpacingPolicy):
@@ -31,4 +31,4 @@ class ConstantTimePolicy(SpacingPolicy):
         self.t0 = t0
 
     def spacing(self, x: np.ndarray):
-        return np.array([[-self.t0 * x[1, 0] - self.d0], [0]])
+        return np.array([-self.t0 * x[1, 0] - self.d0, 0])

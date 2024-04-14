@@ -186,6 +186,10 @@ class Platoon:
             )
         return self.vehicles[i].get_gear_from_velocity(v)
 
+    def get_vehicle_system_dicts(self, ts: float) -> list[dict]:
+        """Get the dictionary representation of the PWA system for each vehicle."""
+        return [vehicle.get_discrete_PWA_system(ts) for vehicle in self.vehicles]
+
 
 class PwaFrictionVehicle(Vehicle):
     """A vehicle with PWA approximation replacing nonlinear friction."""
@@ -248,7 +252,7 @@ class PwaFrictionVehicle(Vehicle):
         Ad = []
         Bd = []
         cd = []
-        for i in range(2):
+        for i in range(len(disc_PWA_sys["A"])):
             Ad_i, Bd_i, cd_i = forward_euler(
                 disc_PWA_sys["A"][i], disc_PWA_sys["B"][i], ts, disc_PWA_sys["c"][i]
             )

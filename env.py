@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Literal
 
 import gymnasium as gym
 import numpy as np
@@ -27,6 +27,7 @@ class PlatoonEnv(gym.Env[npt.NDArray[np.floating], npt.NDArray[np.floating]]):
     def __init__(
         self,
         n: int,
+        platoon: Platoon,
         ep_len: int = 100,
         ts: float = 1,
         leader_trajectory: LeaderTrajectory = ConstantVelocityLeaderTrajectory(
@@ -39,8 +40,7 @@ class PlatoonEnv(gym.Env[npt.NDArray[np.floating], npt.NDArray[np.floating]]):
     ) -> None:
         super().__init__()
 
-        self.platoon = Platoon(n)
-
+        self.platoon = platoon
         self.ts = ts
         self.n = n
         self.ep_len = ep_len
@@ -53,7 +53,9 @@ class PlatoonEnv(gym.Env[npt.NDArray[np.floating], npt.NDArray[np.floating]]):
         else:
             self.cost_func = self.lin_cost
 
-        self.previous_action = None  # store previous action to penalise variation
+        self.previous_action: np.ndarray | None = (
+            None  # store previous action to penalise variation
+        )
 
     def reset(
         self,
@@ -165,7 +167,7 @@ class PlatoonEnv(gym.Env[npt.NDArray[np.floating], npt.NDArray[np.floating]]):
             j = np.zeros((self.n, 1))
             for i in range(self.n):
                 j[i, :] = self.platoon.get_gear_from_vehicle_velocity(
-                    i, self.x[2 * i + 1, :]
+                    i, self.x[2 * i + 1, 0]
                 )
 
         r = self.get_stage_cost(self.x, u)

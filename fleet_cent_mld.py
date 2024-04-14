@@ -10,61 +10,46 @@ from gymnasium.wrappers import TimeLimit
 from mpcrl.wrappers.envs import MonitorEpisodes
 from scipy.linalg import block_diag
 
-from env import CarFleet
-from models import ACC
-from mpcs.cent_mld import MPCMldCent
-from mpcs.mpc_gear import MpcGear
+from env import PlatoonEnv
+from mpcs.cent_mld import MpcMldCent
+# from mpcs.mpc_gear import MpcGear
 from plot_fleet import plot_fleet
+from misc.leader_trajectory import ConstantVelocityLeaderTrajectory
+from models import Platoon
+
+from misc.common_controller_params import Params
 
 np.random.seed(2)
 
 PLOT = False
 SAVE = True
 
-n = 15  # num cars
+n = 3  # num cars
 N = 5  # controller horizon
+ep_len = 10  # length of episode (sim len)
+ts = Params.ts
+
 COST_2_NORM = True
-DISCRETE_GEARS = False
-HOMOGENOUS = True
-LEADER_TRAJ = 1  # "1" - constant velocity leader traj. Vehicles start from random ICs. "2" - accelerating leader traj. Vehicles start in perfect platoon.
-
-if len(sys.argv) > 1:
-    n = int(sys.argv[1])
-if len(sys.argv) > 2:
-    N = int(sys.argv[2])
-if len(sys.argv) > 3:
-    COST_2_NORM = bool(int(sys.argv[3]))
-if len(sys.argv) > 4:
-    DISCRETE_GEARS = bool(int(sys.argv[4]))
-if len(sys.argv) > 5:
-    HOMOGENOUS = bool(int(sys.argv[5]))
-if len(sys.argv) > 6:
-    LEADER_TRAJ = int(sys.argv[6])
-
 random_ICs = False
-if LEADER_TRAJ == 1:
-    random_ICs = True
 
-w = 1e4  # slack variable penalty
-ep_len = 100  # length of episode (sim len)
+leader_trajectory = ConstantVelocityLeaderTrajectory(
+    p=1000, v=20, trajectory_len=ep_len + 50, ts=1
+)
+leader_x = leader_trajectory.get_leader_trajectory()
 
-acc = ACC(ep_len, N, leader_traj=LEADER_TRAJ)
-leader_state = acc.get_leader_state()
-
-
-class MpcGearCent(MPCMldCent, MpcMldCentDecup, MpcGear):
-    def __init__(self, systems: list[dict], n: int, N: int) -> None:
-        self.n = n
-        MpcMldCentDecup.__init__(self, systems, n, N)  # use the MpcMld constructor
-        F = block_diag(
-            *([systems[0]["F"]] * n)
-        )  # here we are assuming that the F and G are the same for all systems
-        G = np.vstack([systems[0]["G"]] * n)
-        self.setup_gears(N, acc, F, G)
-        self.setup_cost_and_constraints(self.u_g, acc, COST_2_NORM)
+# class MpcGearCent(MPCMldCent, MpcMldCentDecup, MpcGear):
+#     def __init__(self, systems: list[dict], n: int, N: int) -> None:
+#         self.n = n
+#         MpcMldCentDecup.__init__(self, systems, n, N)  # use the MpcMld constructor
+#         F = block_diag(
+#             *([systems[0]["F"]] * n)
+#         )  # here we are assuming that the F and G are the same for all systems
+#         G = np.vstack([systems[0]["G"]] * n)
+#         self.setup_gears(N, acc, F, G)
+#         self.setup_cost_and_constraints(self.u_g, acc, COST_2_NORM)
 
 
-class TrackingMldAgent(MldAgent):
+class TrackingCentralizedAgent(MldAgent):
     def __init__(self, mpc: MpcMld) -> None:
         self.solve_times = np.zeros((ep_len, 1))
         self.node_counts = np.zeros((ep_len, 1))
@@ -73,50 +58,53 @@ class TrackingMldAgent(MldAgent):
 
     def on_timestep_end(self, env: Env, episode: int, timestep: int) -> None:
         # time step starts from 1, so this will set the cost accurately for the next time-step
-        self.mpc.set_leader_traj(leader_state[:, timestep : (timestep + N + 1)])
+        self.mpc.set_leader_traj(leader_x[:, timestep : (timestep + N + 1)])
         self.solve_times[env.step_counter - 1, :] = self.run_time
         self.node_counts[env.step_counter - 1, :] = self.node_count
         self.bin_var_counts[env.step_counter - 1, :] = self.num_bin_vars
         return super().on_timestep_end(env, episode, timestep)
 
     def on_episode_start(self, env: Env, episode: int, state) -> None:
-        self.mpc.set_leader_traj(leader_state[:, 0 : N + 1])
+        self.mpc.set_leader_traj(leader_x[:, 0 : N + 1])
         return super().on_episode_start(env, episode, state)
 
+
+# vehicles
+platoon = Platoon(n, vehicle_type="pwa_gear")
+systems = platoon.get_vehicle_system_dicts(ts)
 
 # env
 env = MonitorEpisodes(
     TimeLimit(
-        CarFleet(
-            acc,
-            n,
-            ep_len,
-            L2_norm_cost=COST_2_NORM,
-            homogenous=HOMOGENOUS,
-            random_ICs=random_ICs,
-        ),
+        PlatoonEnv(n=n, platoon=platoon, leader_trajectory=leader_trajectory),
         max_episode_steps=ep_len,
     )
 )
 
-if DISCRETE_GEARS:
-    if HOMOGENOUS:  # by not passing the index all systems are the same
-        systems = [acc.get_friction_pwa_system() for i in range(n)]
-    else:
-        systems = [acc.get_friction_pwa_system(i) for i in range(n)]
-    mpc = MpcGearCent(systems, n, N)
-    mpc.set_leader_traj(leader_state[:, 0 : N + 1])
-    agent = TrackingMldAgent(mpc)
-else:
-    # mld mpc
-    if HOMOGENOUS:  # by not passing the index all systems are the same
-        systems = [acc.get_pwa_system() for i in range(n)]
-    else:
-        systems = [acc.get_pwa_system(i) for i in range(n)]
-    mld_mpc = MPCMldCent(systems, acc, COST_2_NORM, n, N)
-    # initialise the cost with the first tracking point
-    mld_mpc.set_leader_traj(leader_state[:, 0 : N + 1])
-    agent = TrackingMldAgent(mld_mpc)
+# mpcs
+mpc = MpcMldCent(n, N, systems)
+
+# agent
+agent = TrackingCentralizedAgent(mpc)
+
+# if DISCRETE_GEARS:
+#     if HOMOGENOUS:  # by not passing the index all systems are the same
+#         systems = [acc.get_friction_pwa_system() for i in range(n)]
+#     else:
+#         systems = [acc.get_friction_pwa_system(i) for i in range(n)]
+#     mpc = MpcGearCent(systems, n, N)
+#     mpc.set_leader_traj(leader_state[:, 0 : N + 1])
+#     agent = TrackingMldAgent(mpc)
+# else:
+#     # mld mpc
+#     if HOMOGENOUS:  # by not passing the index all systems are the same
+#         systems = [acc.get_pwa_system() for i in range(n)]
+#     else:
+#         systems = [acc.get_pwa_system(i) for i in range(n)]
+#     mld_mpc = MPCMldCent(systems, acc, COST_2_NORM, n, N)
+#     # initialise the cost with the first tracking point
+#     mld_mpc.set_leader_traj(leader_state[:, 0 : N + 1])
+#     agent = TrackingMldAgent(mld_mpc)
 
 agent.evaluate(env=env, episodes=1, seed=1)
 

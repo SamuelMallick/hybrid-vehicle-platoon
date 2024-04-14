@@ -1,106 +1,134 @@
 import gurobipy as gp
 import numpy as np
 from dmpcpwa.mpc.mpc_mld_cent_decup import MpcMldCentDecup
+from models import Vehicle
+from misc.common_controller_params import Params
+from misc.spacing_policy import SpacingPolicy, ConstantSpacingPolicy
 
-from models import ACC
 
+class MpcMldCent(MpcMldCentDecup):
+    """A centralized MPC controller for the platoon using mixed-integer MLD approach."""
 
-class MPCMldCent(MpcMldCentDecup):
+    Q_x = Params.Q_x
+    Q_u = Params.Q_u
+    Q_du = Params.Q_du
+    w = Params.w
+    a_acc = Params.a_acc
+    a_dec = Params.a_dec
+    ts = Params.ts
+    d_safe = Params.d_safe
+
     def __init__(
-        self, systems: list[dict], acc: ACC, cost_2_norm: bool, n, N: int
+        self,
+        n: int,
+        N: int,
+        pwa_systems: list[dict],
+        spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
+        quadratic_cost: bool = True,
     ) -> None:
-        super().__init__(systems, n, N)
+        super().__init__(
+            pwa_systems, n, N
+        )  # creates the state and control variables, sets teh dynamics, and creates the MLD constraints for PWA dynamics
         self.n = n
         self.N = N
-        self.setup_cost_and_constraints(self.u, acc, cost_2_norm)
-
-    def setup_cost_and_constraints(self, u, acc, cost_2_norm):
-        """Sets up the cost and constraints. Penalises the u passed in."""
-        if cost_2_norm:
-            cost_func = self.min_2_norm
+        self.spacing_policy = spacing_policy
+        if quadratic_cost:
+            self.cost_func = self.min_2_norm
         else:
-            cost_func = self.min_1_norm
+            self.cost_func = self.min_1_norm
 
-        nx_l = acc.nx_l
-        nu_l = acc.nu_l
-        Q_x_l = acc.Q_x_l
-        Q_u_l = acc.Q_u_l
-        Q_du_l = acc.Q_du_l
-        sep = acc.sep
-        d_safe = acc.d_safe
-        w = acc.w
+        self.setup_cost_and_constraints(self.u)
+
+    def setup_cost_and_constraints(self, u):
+        """Set up  cost and constraints for platoon tracking. Penalises the u passed in."""
+
+        nx_l = Vehicle.nx_l
+        nu_l = Vehicle.nu_l
 
         # slack vars for soft constraints
         self.s = self.mpc_model.addMVar(
             (self.n, self.N + 1), lb=0, ub=float("inf"), name="s"
         )
 
-        # formulate cost
-        # leader_traj gets changed and fixed by setting its bounds
+        # cost func
+        # leader_traj - gets updated each time step
         self.leader_traj = self.mpc_model.addMVar(
             (nx_l, self.N + 1), lb=0, ub=0, name="leader_traj"
         )
-        obj = 0
-        for i in range(self.n):
-            local_state = self.x[nx_l * i : nx_l * (i + 1), :]
-            local_control = u[nu_l * i : nu_l * (i + 1), :]
-            if i == 0:
-                # first car follows traj with no sep
-                follow_state = self.leader_traj
-                temp_sep = np.zeros((2, 1))
-            else:
-                # otherwise follow car infront (i-1)
-                follow_state = self.x[nx_l * (i - 1) : nx_l * (i), :]
-                temp_sep = sep
-            for k in range(self.N):
-                obj += cost_func(
-                    local_state[:, [k]] - follow_state[:, [k]] - temp_sep, Q_x_l
+        cost = 0
+        x_l = [self.x[i*nx_l:(i+1)*nx_l, :] for i in range(self.n)]
+        u_l = [u[i*nu_l:(i+1)*nu_l, :] for i in range(self.n)]
+        # tracking cost
+        cost += sum(
+            [
+                self.cost_func(x_l[0][:, k] - self.leader_traj[:, k], self.Q_x)
+                for k in range(self.N + 1)
+            ]
+        )
+        cost += sum(
+            [
+                self.cost_func(
+                    x_l[i][:, k]
+                    - x_l[i - 1][:, k]
+                    - self.spacing_policy.spacing(x_l[i][:, k]),
+                    self.Q_x,
                 )
-                obj += cost_func(local_control[:, [k]], Q_u_l) + w * self.s[i, [k]]
+                for i in range(1, self.n)
+                for k in range(self.N + 1)
+            ]
+        )
+        # control effort cost
+        cost += sum(
+            [
+                self.cost_func(u_l[i][:, k], self.Q_u)
+                for i in range(self.n)
+                for k in range(self.N)
+            ]
+        )
+        # contral variation cost
+        cost += sum(
+            [
+                self.cost_func(u_l[i][:, k + 1] - u_l[i][:, k], self.Q_du)
+                for i in range(self.n)
+                for k in range(self.N - 1)
+            ]
+        )
+        # slack variable cost
+        cost += sum(
+            [self.w * self.s[i, k] for i in range(self.n) for k in range(self.N + 1)]
+        )
 
-                if k < self.N - 1:
-                    obj += cost_func(
-                        local_control[:, [k + 1]] - local_control[:, [k]], Q_du_l
-                    )
-
-            obj += (
-                cost_func(
-                    local_state[:, [self.N]] - follow_state[:, [self.N]] - temp_sep,
-                    Q_x_l,
-                )
-                + w * self.s[i, [self.N]]
-            )
-        self.mpc_model.setObjective(obj, gp.GRB.MINIMIZE)
+        self.mpc_model.setObjective(cost, gp.GRB.MINIMIZE)
 
         # add extra constraints
         # acceleration constraints
-        for i in range(self.n):
-            for k in range(self.N):
-                self.mpc_model.addConstr(
-                    acc.a_dec * acc.ts
-                    <= self.x[nx_l * i + 1, [k + 1]] - self.x[nx_l * i + 1, [k]],
-                    name=f"dec_car_{i}_step{k}",
-                )
-                self.mpc_model.addConstr(
-                    self.x[nx_l * i + 1, [k + 1]] - self.x[nx_l * i + 1, [k]]
-                    <= acc.a_acc * acc.ts,
-                    name=f"acc_car_{i}_step{k}",
-                )
-
+        self.mpc_model.addConstrs(
+            (
+                self.a_dec * self.ts <= x_l[i][1, k + 1] - x_l[i][1, k]
+                for i in range(self.n)
+                for k in range(self.N)
+            ),
+            name="dec",
+        )
+        self.mpc_model.addConstrs(
+            (
+                x_l[i][1, k + 1] - x_l[i][1, k] <= self.a_acc * self.ts
+                for i in range(self.n)
+                for k in range(self.N)
+            ),
+            name="acc",
+        )
         # safe distance behind follower vehicle
-
-        for i in range(self.n):
-            local_state = self.x[nx_l * i : nx_l * (i + 1), :]
-            if i != 0:  # leader isn't following another car
-                follow_state = self.x[nx_l * (i - 1) : nx_l * (i), :]
-                for k in range(self.N + 1):
-                    self.mpc_model.addConstr(
-                        local_state[0, [k]]
-                        <= follow_state[0, [k]] - d_safe + self.s[i, [k]],
-                        name=f"safe_dis_car_{i}_step{k}",
-                    )
+        self.mpc_model.addConstrs(
+            (
+                x_l[i][0, k] <= x_l[i - 1][0, k] - self.d_safe + self.s[i, k]
+                for i in range(self.n)
+                for k in range(self.N + 1)
+            ),
+            name="safe",
+        )
 
     def set_leader_traj(self, leader_traj):
         for k in range(self.N + 1):
-            self.leader_traj[:, [k]].ub = leader_traj[:, [k]]
-            self.leader_traj[:, [k]].lb = leader_traj[:, [k]]
+            self.leader_traj[:, k].ub = leader_traj[:, k]
+            self.leader_traj[:, k].lb = leader_traj[:, k]

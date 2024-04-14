@@ -25,7 +25,7 @@ class ConstantVelocityLeaderTrajectory(LeaderTrajectory):
     def get_leader_trajectory(self) -> np.ndarray:
         x = np.zeros((2, self.trajectory_len))
         x[:, [0]] = np.array([[self.p0], [self.v]])
-        for k in range(self.trajectory_len):
+        for k in range(self.trajectory_len-1):
             x[:, [k + 1]] = x[:, [k]] + self.ts * np.array([[self.v], [0]])
         return x
 
@@ -56,7 +56,7 @@ class StopAndGoLeaderTrajectory(LeaderTrajectory):
         x = np.zeros((2, self.trajectory_len))
         x[:, [0]] = np.array([[self.p0], [self.vh]])
         v = self.vh
-        for k in range(self.trajectory_len):
+        for k in range(self.trajectory_len-1):
             if k >= self.v_change_steps[0] and k < self.v_change_steps[1]:
                 v = self.vl
             elif k >= self.v_change_steps[1]:
