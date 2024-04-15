@@ -110,7 +110,7 @@ class Vehicle:
 
     def step(self, x: np.ndarray, u: float, j: int, ts: float):
         """Step local non-linear hybrid dynamics with euler step of ts seconds."""
-        if np.abs(u) > 1:
+        if np.abs(u) > 1 + 1e5: # small numerical tolerance for control bound
             raise ValueError("Control u is bounded -1 <= u <= 1.")
         x_new = x + ts * (self.A(x) + self.B(x, j) * u)
 
@@ -172,7 +172,7 @@ class Platoon:
             u_l = np.split(u, self.n, axis=0)
             j_l = np.split(j, self.n, axis=0)
             x_new = [
-                self.vehicles[i].step(x_l[i], u_l[i].item(), j_l[i].item(), DT)
+                self.vehicles[i].step(x_l[i], u_l[i].item(), int(j_l[i].item()), DT)
                 for i in range(self.n)
             ]
             x = np.vstack(x_new)

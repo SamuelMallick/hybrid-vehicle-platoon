@@ -1,9 +1,9 @@
 import gurobipy as gp
-import numpy as np
 from dmpcpwa.mpc.mpc_mld_cent_decup import MpcMldCentDecup
-from models import Vehicle
+
 from misc.common_controller_params import Params
-from misc.spacing_policy import SpacingPolicy, ConstantSpacingPolicy
+from misc.spacing_policy import ConstantSpacingPolicy, SpacingPolicy
+from models import Vehicle
 
 
 class MpcMldCent(MpcMldCentDecup):
@@ -56,8 +56,8 @@ class MpcMldCent(MpcMldCentDecup):
             (nx_l, self.N + 1), lb=0, ub=0, name="leader_traj"
         )
         cost = 0
-        x_l = [self.x[i*nx_l:(i+1)*nx_l, :] for i in range(self.n)]
-        u_l = [u[i*nu_l:(i+1)*nu_l, :] for i in range(self.n)]
+        x_l = [self.x[i * nx_l : (i + 1) * nx_l, :] for i in range(self.n)]
+        u_l = [u[i * nu_l : (i + 1) * nu_l, :] for i in range(self.n)]
         # tracking cost
         cost += sum(
             [
@@ -122,7 +122,7 @@ class MpcMldCent(MpcMldCentDecup):
         self.mpc_model.addConstrs(
             (
                 x_l[i][0, k] <= x_l[i - 1][0, k] - self.d_safe + self.s[i, k]
-                for i in range(self.n)
+                for i in range(1, self.n)
                 for k in range(self.N + 1)
             ),
             name="safe",

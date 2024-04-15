@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Any
 
 import gymnasium as gym
 import numpy as np
@@ -129,7 +129,10 @@ class PlatoonEnv(gym.Env[npt.NDArray[np.floating], npt.NDArray[np.floating]]):
         cost += sum(
             [
                 self.cost_func(
-                    x[i] - x[i - 1] - self.spacing_policy.spacing(x[i]), self.Q_x
+                    x[i]
+                    - x[i - 1]
+                    - (self.spacing_policy.spacing(x[i])).reshape(x[i].shape),
+                    self.Q_x,
                 )
                 for i in range(1, self.n)
             ]
@@ -140,7 +143,7 @@ class PlatoonEnv(gym.Env[npt.NDArray[np.floating], npt.NDArray[np.floating]]):
         cost += sum([self.cost_func(u[i] - u_p[i], self.Q_du) for i in range(self.n)])
 
         # check for constraint violations
-        if any([x[i] - x[i + 1] < self.d_safe for i in range(self.n - 1)]):
+        if any([x[i][0, 0] - x[i + 1][0, 0] < self.d_safe for i in range(self.n - 1)]):
             self.viol_counter[-1][self.step_counter] = 100
 
         self.previous_action = action

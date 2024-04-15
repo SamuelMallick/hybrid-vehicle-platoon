@@ -1,39 +1,38 @@
 import pickle
-import sys
 
 import numpy as np
 from dmpcpwa.agents.mld_agent import MldAgent
 from dmpcpwa.mpc.mpc_mld import MpcMld
-from dmpcpwa.mpc.mpc_mld_cent_decup import MpcMldCentDecup
 from gymnasium import Env
 from gymnasium.wrappers import TimeLimit
 from mpcrl.wrappers.envs import MonitorEpisodes
-from scipy.linalg import block_diag
 
 from env import PlatoonEnv
-from mpcs.cent_mld import MpcMldCent
-# from mpcs.mpc_gear import MpcGear
-from plot_fleet import plot_fleet
+from misc.common_controller_params import Params
+from misc.spacing_policy import ConstantSpacingPolicy
 from misc.leader_trajectory import ConstantVelocityLeaderTrajectory
 from models import Platoon
+from mpcs.cent_mld import MpcMldCent
 
-from misc.common_controller_params import Params
+# from mpcs.mpc_gear import MpcGear
+from plot_fleet import plot_fleet
 
 np.random.seed(2)
 
-PLOT = False
-SAVE = True
+PLOT = True
+SAVE = False
 
-n = 3  # num cars
+n = 5  # num cars
 N = 5  # controller horizon
-ep_len = 10  # length of episode (sim len)
+ep_len = 50  # length of episode (sim len)
 ts = Params.ts
 
 COST_2_NORM = True
 random_ICs = False
 
+spacing_policy = ConstantSpacingPolicy(50)
 leader_trajectory = ConstantVelocityLeaderTrajectory(
-    p=1000, v=20, trajectory_len=ep_len + 50, ts=1
+    p=3000, v=20, trajectory_len=ep_len + 50, ts=ts
 )
 leader_x = leader_trajectory.get_leader_trajectory()
 
@@ -76,13 +75,13 @@ systems = platoon.get_vehicle_system_dicts(ts)
 # env
 env = MonitorEpisodes(
     TimeLimit(
-        PlatoonEnv(n=n, platoon=platoon, leader_trajectory=leader_trajectory),
+        PlatoonEnv(n=n, platoon=platoon, leader_trajectory=leader_trajectory, spacing_policy=spacing_policy),
         max_episode_steps=ep_len,
     )
 )
 
 # mpcs
-mpc = MpcMldCent(n, N, systems)
+mpc = MpcMldCent(n, N, systems, spacing_policy=spacing_policy)
 
 # agent
 agent = TrackingCentralizedAgent(mpc)
@@ -123,7 +122,7 @@ print(f"Run_times_sum: {sum(agent.solve_times)}")
 print(f"average_bin_vars: {sum(agent.bin_var_counts)/len(agent.bin_var_counts)}")
 
 if PLOT:
-    plot_fleet(n, X, U, R, leader_state, violations=env.unwrapped.viol_counter[0])
+    plot_fleet(n, X, U, R, leader_x, violations=env.unwrapped.viol_counter[0])
 
 if SAVE:
     with open(
