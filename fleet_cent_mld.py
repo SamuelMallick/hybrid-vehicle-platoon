@@ -3,19 +3,19 @@ import pickle
 import numpy as np
 from dmpcpwa.agents.mld_agent import MldAgent
 from dmpcpwa.mpc.mpc_mld import MpcMld
+from dmpcpwa.mpc.mpc_mld_cent_decup import MpcMldCentDecup
 from gymnasium import Env
 from gymnasium.wrappers import TimeLimit
 from mpcrl.wrappers.envs import MonitorEpisodes
+from scipy.linalg import block_diag
 
 from env import PlatoonEnv
 from misc.common_controller_params import Params, Sim
 from misc.leader_trajectory import ConstantVelocityLeaderTrajectory
 from misc.spacing_policy import ConstantSpacingPolicy, SpacingPolicy
-from models import Platoon, Vehicle
+from models import Platoon
 from mpcs.cent_mld import MpcMldCent
-from dmpcpwa.mpc.mpc_mld_cent_decup import MpcMldCentDecup
 from mpcs.mpc_gear import MpcGear, MpcNonlinearGear
-from scipy.linalg import block_diag
 
 # from mpcs.mpc_gear import MpcGear
 from plot_fleet import plot_fleet
@@ -54,8 +54,16 @@ class MpcGearCent(MpcMldCent, MpcMldCentDecup, MpcGear):
         self.setup_gears(N, F, G)
         self.setup_cost_and_constraints(self.u_g, spacing_policy, quadratic_cost)
 
+
 class MpcNonlinearGearCent(MpcMldCent, MpcNonlinearGear):
-    def __init__(self, n: int, N: int, nl_systems: list[dict], spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50), quadratic_cost: bool = True) -> None:
+    def __init__(
+        self,
+        n: int,
+        N: int,
+        nl_systems: list[dict],
+        spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
+        quadratic_cost: bool = True,
+    ) -> None:
         MpcNonlinearGear.__init__(self, nl_systems, N)
         F = block_diag(*[nl_systems[i]["F"] for i in range(n)])
         G = np.vstack([nl_systems[i]["G"] for i in range(n)])
@@ -136,8 +144,7 @@ if PLOT:
 
 if SAVE:
     with open(
-        f"cent"
-        + ".pkl",
+        f"cent" + ".pkl",
         "wb",
     ) as file:
         pickle.dump(X, file)

@@ -1,11 +1,10 @@
 from typing import Literal
+
 import numpy as np
 
 
 class Sim:
-    vehicle_model_type: Literal["nonlinear", "pwa_friction", "pwa_gear"] = (
-        "nonlinear"
-    )
+    vehicle_model_type: Literal["nonlinear", "pwa_friction", "pwa_gear"] = "nonlinear"
     start_from_platoon: bool = False
 
 
