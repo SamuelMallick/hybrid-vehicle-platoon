@@ -214,8 +214,8 @@ class PwaFrictionVehicle(Vehicle):
         S = [np.array([[0, 1], [0, -1]]), np.array([[0, 1], [0, -1]])]
         R = [np.zeros((2, 1)), np.zeros((2, 1))]
         T = [
-            np.array([[self.alpha], [self.v_min]]),
-            np.array([[self.v_max], [self.alpha]]),
+            np.array([[self.alpha], [-self.v_min]]),
+            np.array([[self.v_max], [-self.alpha]]),
         ]
         A = [
             np.array([[0, 1], [0, -(self.c1) / (mass)]]),
@@ -227,7 +227,7 @@ class PwaFrictionVehicle(Vehicle):
             np.array([[0], [-self.mu * self.grav - self.d / mass]]),
         ]
         D = np.array([[1, 0], [-1, 0], [0, 1], [0, -1]])
-        E = np.array([[self.p_max], [-self.p_min], [self.v_min], [self.v_max]])
+        E = np.array([[self.p_max], [-self.p_min], [self.v_max], [-self.v_min]])
         F = np.array([[1], [-1]])
         G = np.array(
             [[self.u_max], [-self.u_min]]

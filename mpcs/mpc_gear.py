@@ -122,10 +122,10 @@ class MpcGear(MpcMld):
                 for k in range(self.N):
                     gears[i, k] = sig[:, i, k].argmax() + 1
         else:
-            raise RuntimeWarning(f'gear mpc for state {state} is infeasible.')
+            raise RuntimeWarning(f"gear mpc for state {state} is infeasible.")
             # u_g = np.zeros((self.m, self.N))
-            # gears = 6* np.ones((self.m, self.N))  # default set all gears 
-            
+            # gears = 6* np.ones((self.m, self.N))  # default set all gears
+
         info["u"] = u_g
         self.gears_pred = gears
         return np.vstack((u_g[:, [0]], gears[:, [0]])), info

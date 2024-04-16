@@ -25,7 +25,7 @@ np.random.seed(2)
 PLOT = True
 SAVE = False
 
-n = 1  # num cars
+n = 3  # num cars
 N = 5  # controller horizon
 ep_len = 50  # length of episode (sim len)
 ts = Params.ts
@@ -49,10 +49,8 @@ class MpcGearCent(MpcMldCent, MpcMldCentDecup, MpcGear):
     ) -> None:
         self.n = n
         MpcMldCentDecup.__init__(self, systems, n, N)  # use the MpcMld constructor
-        F = block_diag(
-            *([systems[0]["F"]] * n)
-        )  # here we are assuming that the F and G are the same for all systems
-        G = np.vstack([systems[0]["G"]] * n)
+        F = block_diag(*[systems[i]["F"] for i in range(n)])
+        G = np.vstack([systems[i]["G"] for i in range(n)])
         self.setup_gears(N, F, G)
         self.setup_cost_and_constraints(self.u_g, spacing_policy, quadratic_cost)
 
