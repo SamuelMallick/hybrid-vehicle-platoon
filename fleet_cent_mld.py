@@ -11,10 +11,10 @@ from env import PlatoonEnv
 from misc.common_controller_params import Params, Sim
 from misc.leader_trajectory import ConstantVelocityLeaderTrajectory
 from misc.spacing_policy import ConstantSpacingPolicy, SpacingPolicy
-from models import Platoon
+from models import Platoon, Vehicle
 from mpcs.cent_mld import MpcMldCent
 from dmpcpwa.mpc.mpc_mld_cent_decup import MpcMldCentDecup
-from mpcs.mpc_gear import MpcGear
+from mpcs.mpc_gear import MpcGear, MpcNonlinearGear
 from scipy.linalg import block_diag
 
 # from mpcs.mpc_gear import MpcGear
@@ -25,7 +25,7 @@ np.random.seed(2)
 PLOT = True
 SAVE = False
 
-n = 3  # num cars
+n = 1  # num cars
 N = 5  # controller horizon
 ep_len = 50  # length of episode (sim len)
 ts = Params.ts
@@ -51,6 +51,14 @@ class MpcGearCent(MpcMldCent, MpcMldCentDecup, MpcGear):
         MpcMldCentDecup.__init__(self, systems, n, N)  # use the MpcMld constructor
         F = block_diag(*[systems[i]["F"] for i in range(n)])
         G = np.vstack([systems[i]["G"] for i in range(n)])
+        self.setup_gears(N, F, G)
+        self.setup_cost_and_constraints(self.u_g, spacing_policy, quadratic_cost)
+
+class MpcNonlinearGearCent(MpcMldCent, MpcNonlinearGear):
+    def __init__(self, n: int, N: int, nl_systems: list[dict], spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50), quadratic_cost: bool = True) -> None:
+        MpcNonlinearGear.__init__(self, nl_systems, N)
+        F = block_diag(*[nl_systems[i]["F"] for i in range(n)])
+        G = np.vstack([nl_systems[i]["G"] for i in range(n)])
         self.setup_gears(N, F, G)
         self.setup_cost_and_constraints(self.u_g, spacing_policy, quadratic_cost)
 
@@ -99,7 +107,7 @@ if Sim.vehicle_model_type == "pwa_gear":
 elif Sim.vehicle_model_type == "pwa_friction":
     mpc = MpcGearCent(n, N, systems, spacing_policy=spacing_policy)
 elif Sim.vehicle_model_type == "nonlinear":
-    raise NotImplementedError()
+    mpc = MpcNonlinearGearCent(n, N, systems, spacing_policy=spacing_policy)
 else:
     raise ValueError(f"{Sim.vehicle_model_type} is not a valid vehicle model type.")
 
@@ -128,7 +136,7 @@ if PLOT:
 
 if SAVE:
     with open(
-        f"cent_n_{n}_N_{N}_Q_{COST_2_NORM}_DG_{DISCRETE_GEARS}_HOM_{HOMOGENOUS}_LT_{LEADER_TRAJ}"
+        f"cent"
         + ".pkl",
         "wb",
     ) as file:

@@ -3,7 +3,7 @@ from typing import Literal
 import matplotlib.pyplot as plt
 import numpy as np
 from dmpcrl.utils.discretisation import forward_euler
-
+import gurobipy as gp
 
 class GearTransimission:
     """Class for modelling gear traction dynamics in Adaptive Cruise Control for a SMART Car: A Comparison Benchmark for MPC-PWA Control Methods - D. Corona and B. De Schutter 2008."""
@@ -120,6 +120,37 @@ class Vehicle:
                 f"Velocity {x_new[1, 0]} of vehicle exeeds bounds {self.vl[0], self.vh[-1]}."
             )
         return x_new
+    
+    def dyn(self, x, u, ts):
+        """Nonlinear discrete dynamics for gurobipy sybolic states and actions, wit heuler time step ts."""
+        if x.shape != (2, 1) or u.shape != (1,1):
+            raise ValueError(f'Dyn function for nonlinear model only defined for x and u of size {(2, 1)} and {(1,1)}.')
+        A = self.A(x)
+        B = np.array([[0], [(1) / (self.m)]])@u
+        o = gp.MQuadExpr.zeros((2, 1))
+        o[0, 0] = A[0, 0].item() + B[0, 0]
+        o[1, 0] = A[1, 0].item() + B[1, 0]
+        return x + ts*o
+    
+    def get_discrete_system(self, ts):
+        """Return system dictionary for discrete dynamics with time step ts.
+        Dict is discription of nonlinear model. In this model the u contains the traction force of the gear already.
+        o['dyn'] is lambda function for dynamics. It is SPECIFICALLY constructed for Gurobipy objects. This is not compatible with other forms yet.
+        o['D'], o['E'], o['F'], o['G'] are state and control constraints Dx <= E, F@u <= G"""
+        D = np.array([[1, 0], [-1, 0], [0, 1], [0, -1]])
+        E = np.array([[self.p_max], [-self.p_min], [self.v_max], [-self.v_min]])
+        F = np.array([[1], [-1]])
+        G = np.array(
+            [[self.u_max], [-self.u_min]]
+        )  # velocity bounded -1 <= u <= 1 as it is normalized throttle
+
+        return {
+            'dyn': lambda x, u: self.dyn(x, u, ts),
+            'D': D,
+            'E': E,
+            'F': F,
+            'G': G,
+        }
 
 
 class Platoon:
@@ -189,7 +220,7 @@ class Platoon:
 
     def get_vehicle_system_dicts(self, ts: float) -> list[dict]:
         """Get the dictionary representation of the PWA system for each vehicle."""
-        return [vehicle.get_discrete_PWA_system(ts) for vehicle in self.vehicles]
+        return [vehicle.get_discrete_system(ts) for vehicle in self.vehicles]
 
 
 class PwaFrictionVehicle(Vehicle):
@@ -246,7 +277,7 @@ class PwaFrictionVehicle(Vehicle):
             "G": G,
         }
 
-    def get_discrete_PWA_system(self, ts: float):
+    def get_discrete_system(self, ts: float):
         """Return PWA dictionary for discrete dynamics with time step ts."""
         disc_PWA_sys = self.system.copy()
         # discretise the dynamics

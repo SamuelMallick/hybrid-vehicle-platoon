@@ -26,7 +26,7 @@ class MpcGear(MpcMld):
         super().__init__(system, N)
 
     def setup_gears(self, N: int, F: np.ndarray, G: np.ndarray):
-        # now we constrain the input u to include the gears
+        """Set up constraints in mixed-integer problem for gears."""
         nu = self.u.shape[0]
         num_gears = len(Vehicle.b)
 
@@ -129,3 +129,50 @@ class MpcGear(MpcMld):
         info["u"] = u_g
         self.gears_pred = gears
         return np.vstack((u_g[:, [0]], gears[:, [0]])), info
+
+class MpcNonlinearGear(MpcGear):
+    """An MPC controller than uses a nonlinear vehicle model along with discrete gear inputs x^+ = f(x) + B(j,x)u."""
+
+    def __init__(self, systems: list[dict], N: int) -> None:
+        """Instantiate mixed-integer model for nonlinear dynamics for len(systems) systems."""
+        # build mixed-integer model
+        mpc_model = gp.Model("non_linear_gear_mpc")
+        mpc_model.setParam("OutputFlag", 0)
+        mpc_model.setParam("Heuristics", 0)
+
+        # Uncomment if you need to differentiate between infeasbile and unbounded
+        # mpc_model.setParam("DualReductions", 0)
+
+        n = len(systems)
+        nx_l = systems[0]["D"].shape[1]
+        nu_l = systems[0]["F"].shape[1]
+
+        # init states and control
+        x = mpc_model.addMVar(
+            (n*nx_l, N + 1), lb=-float("inf"), ub=float("inf"), name="x"
+        )  # state
+        u = mpc_model.addMVar(
+            (n*nu_l, N), lb=-float("inf"), ub=float("inf"), name="u"
+        )  # control
+        
+        # split the opt vars into local components
+        x_l = [x[i * nx_l : (i + 1) * nx_l, :] for i in range(n)]
+        u_l = [u[i * nu_l : (i + 1) * nu_l, :] for i in range(n)]
+
+        # constraints for dynamics
+        mpc_model.addConstrs((x_l[i][:, [k+1]] == systems[i]['dyn'](x_l[i][:, [k]], u_l[i][:, [k]]) for i in range(n) for k in range(N)), name='dynamics')
+
+        # control and state constraints
+        mpc_model.addConstrs((systems[i]['D']@x_l[i][:, [k]] <= systems[i]['E'] for i in range(n) for k in range(N+1)), name='state constraints') 
+        mpc_model.addConstrs((systems[i]['F']@u_l[i][:, [k]] <= systems[i]['G'] for i in range(n) for k in range(N)), name='control constraints')   # name is IMPORTANT - DONT CHANGE - see above MpcGear class
+        # IC constraint - gets updated everytime solve_mpc is called
+        self.IC = mpc_model.addConstr(x[:, [0]] == np.zeros((n*nx_l, 1)), name="IC")
+
+        # assign parts of model to be used by class later
+        self.mpc_model = mpc_model
+        self.x = x
+        self.u = u
+        # CAREFUL - n here is number of agents, while m is dimension of global control var
+        self.n = n
+        self.m = n*nu_l
+        self.N = N
