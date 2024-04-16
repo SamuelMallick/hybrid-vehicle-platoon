@@ -31,16 +31,20 @@ class MpcMldCent(MpcMldCentDecup):
         )  # creates the state and control variables, sets teh dynamics, and creates the MLD constraints for PWA dynamics
         self.n = n
         self.N = N
-        self.spacing_policy = spacing_policy
+
+        self.setup_cost_and_constraints(self.u, spacing_policy, quadratic_cost)
+
+    def setup_cost_and_constraints(
+        self,
+        u,
+        spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
+        quadratic_cost: bool = True,
+    ):
+        """Set up  cost and constraints for platoon tracking. Penalises the u passed in."""
         if quadratic_cost:
             self.cost_func = self.min_2_norm
         else:
             self.cost_func = self.min_1_norm
-
-        self.setup_cost_and_constraints(self.u)
-
-    def setup_cost_and_constraints(self, u):
-        """Set up  cost and constraints for platoon tracking. Penalises the u passed in."""
 
         nx_l = Vehicle.nx_l
         nu_l = Vehicle.nu_l
@@ -70,7 +74,7 @@ class MpcMldCent(MpcMldCentDecup):
                 self.cost_func(
                     x_l[i][:, k]
                     - x_l[i - 1][:, k]
-                    - self.spacing_policy.spacing(x_l[i][:, k]),
+                    - spacing_policy.spacing(x_l[i][:, k]),
                     self.Q_x,
                 )
                 for i in range(1, self.n)

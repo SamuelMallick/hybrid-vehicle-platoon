@@ -35,7 +35,7 @@ class PlatoonEnv(gym.Env[npt.NDArray[np.floating], npt.NDArray[np.floating]]):
         ),
         spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
         d_safe: float = 25,
-        random_initial_states: bool = True,
+        start_from_platoon: bool = False,
         quadratic_cost: bool = True,
     ) -> None:
         super().__init__()
@@ -45,7 +45,7 @@ class PlatoonEnv(gym.Env[npt.NDArray[np.floating], npt.NDArray[np.floating]]):
         self.n = n
         self.ep_len = ep_len
         self.d_safe = d_safe
-        self.random_initial_states = random_initial_states
+        self.start_from_platoon = start_from_platoon
         self.leader_trajectory = leader_trajectory
         self.spacing_policy = spacing_policy
         if quadratic_cost:
@@ -68,7 +68,7 @@ class PlatoonEnv(gym.Env[npt.NDArray[np.floating], npt.NDArray[np.floating]]):
         self.leader_x = self.leader_trajectory.get_leader_trajectory()
         self.x = np.tile(np.array([[0], [0]]), (self.n, 1))
 
-        if self.random_initial_states:
+        if not self.start_from_platoon:
             starting_velocities = [30] + [
                 20 * np.random.random() + 5 for i in range(self.n - 1)
             ]  # starting velocities between 5-40 ms-1

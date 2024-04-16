@@ -8,11 +8,14 @@ from gymnasium.wrappers import TimeLimit
 from mpcrl.wrappers.envs import MonitorEpisodes
 
 from env import PlatoonEnv
-from misc.common_controller_params import Params
-from misc.spacing_policy import ConstantSpacingPolicy
+from misc.common_controller_params import Params, Sim
 from misc.leader_trajectory import ConstantVelocityLeaderTrajectory
+from misc.spacing_policy import ConstantSpacingPolicy, SpacingPolicy
 from models import Platoon
 from mpcs.cent_mld import MpcMldCent
+from dmpcpwa.mpc.mpc_mld_cent_decup import MpcMldCentDecup
+from mpcs.mpc_gear import MpcGear
+from scipy.linalg import block_diag
 
 # from mpcs.mpc_gear import MpcGear
 from plot_fleet import plot_fleet
@@ -22,13 +25,11 @@ np.random.seed(2)
 PLOT = True
 SAVE = False
 
-n = 5  # num cars
+n = 1  # num cars
 N = 5  # controller horizon
 ep_len = 50  # length of episode (sim len)
 ts = Params.ts
 
-COST_2_NORM = True
-random_ICs = False
 
 spacing_policy = ConstantSpacingPolicy(50)
 leader_trajectory = ConstantVelocityLeaderTrajectory(
@@ -36,16 +37,24 @@ leader_trajectory = ConstantVelocityLeaderTrajectory(
 )
 leader_x = leader_trajectory.get_leader_trajectory()
 
-# class MpcGearCent(MPCMldCent, MpcMldCentDecup, MpcGear):
-#     def __init__(self, systems: list[dict], n: int, N: int) -> None:
-#         self.n = n
-#         MpcMldCentDecup.__init__(self, systems, n, N)  # use the MpcMld constructor
-#         F = block_diag(
-#             *([systems[0]["F"]] * n)
-#         )  # here we are assuming that the F and G are the same for all systems
-#         G = np.vstack([systems[0]["G"]] * n)
-#         self.setup_gears(N, acc, F, G)
-#         self.setup_cost_and_constraints(self.u_g, acc, COST_2_NORM)
+
+class MpcGearCent(MpcMldCent, MpcMldCentDecup, MpcGear):
+    def __init__(
+        self,
+        n: int,
+        N: int,
+        systems: list[dict],
+        spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
+        quadratic_cost: bool = True,
+    ) -> None:
+        self.n = n
+        MpcMldCentDecup.__init__(self, systems, n, N)  # use the MpcMld constructor
+        F = block_diag(
+            *([systems[0]["F"]] * n)
+        )  # here we are assuming that the F and G are the same for all systems
+        G = np.vstack([systems[0]["G"]] * n)
+        self.setup_gears(N, F, G)
+        self.setup_cost_and_constraints(self.u_g, spacing_policy, quadratic_cost)
 
 
 class TrackingCentralizedAgent(MldAgent):
@@ -69,41 +78,36 @@ class TrackingCentralizedAgent(MldAgent):
 
 
 # vehicles
-platoon = Platoon(n, vehicle_type="pwa_gear")
+platoon = Platoon(n, vehicle_type=Sim.vehicle_model_type)
 systems = platoon.get_vehicle_system_dicts(ts)
 
 # env
 env = MonitorEpisodes(
     TimeLimit(
-        PlatoonEnv(n=n, platoon=platoon, leader_trajectory=leader_trajectory, spacing_policy=spacing_policy),
+        PlatoonEnv(
+            n=n,
+            platoon=platoon,
+            leader_trajectory=leader_trajectory,
+            spacing_policy=spacing_policy,
+            start_from_platoon=Sim.start_from_platoon,
+        ),
         max_episode_steps=ep_len,
     )
 )
 
 # mpcs
-mpc = MpcMldCent(n, N, systems, spacing_policy=spacing_policy)
+if Sim.vehicle_model_type == "pwa_gear":
+    mpc = MpcMldCent(n, N, systems, spacing_policy=spacing_policy)
+elif Sim.vehicle_model_type == "pwa_friction":
+    mpc = MpcGearCent(n, N, systems, spacing_policy=spacing_policy)
+elif Sim.vehicle_model_type == "nonlinear":
+    raise NotImplementedError()
+else:
+    raise ValueError(f"{Sim.vehicle_model_type} is not a valid vehicle model type.")
+
 
 # agent
 agent = TrackingCentralizedAgent(mpc)
-
-# if DISCRETE_GEARS:
-#     if HOMOGENOUS:  # by not passing the index all systems are the same
-#         systems = [acc.get_friction_pwa_system() for i in range(n)]
-#     else:
-#         systems = [acc.get_friction_pwa_system(i) for i in range(n)]
-#     mpc = MpcGearCent(systems, n, N)
-#     mpc.set_leader_traj(leader_state[:, 0 : N + 1])
-#     agent = TrackingMldAgent(mpc)
-# else:
-#     # mld mpc
-#     if HOMOGENOUS:  # by not passing the index all systems are the same
-#         systems = [acc.get_pwa_system() for i in range(n)]
-#     else:
-#         systems = [acc.get_pwa_system(i) for i in range(n)]
-#     mld_mpc = MPCMldCent(systems, acc, COST_2_NORM, n, N)
-#     # initialise the cost with the first tracking point
-#     mld_mpc.set_leader_traj(leader_state[:, 0 : N + 1])
-#     agent = TrackingMldAgent(mld_mpc)
 
 agent.evaluate(env=env, episodes=1, seed=1)
 
@@ -127,7 +131,6 @@ if PLOT:
 if SAVE:
     with open(
         f"cent_n_{n}_N_{N}_Q_{COST_2_NORM}_DG_{DISCRETE_GEARS}_HOM_{HOMOGENOUS}_LT_{LEADER_TRAJ}"
-        # + datetime.datetime.now().strftime("%d%H%M%S%f")
         + ".pkl",
         "wb",
     ) as file:
@@ -137,4 +140,4 @@ if SAVE:
         pickle.dump(agent.solve_times, file)
         pickle.dump(agent.node_counts, file)
         pickle.dump(env.unwrapped.viol_counter[0], file)
-        pickle.dump(leader_state, file)
+        pickle.dump(leader_x, file)

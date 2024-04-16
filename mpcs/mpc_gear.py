@@ -2,16 +2,17 @@ import gurobipy as gp
 import numpy as np
 from dmpcpwa.mpc.mpc_mld import MpcMld
 
-from models import ACC
+from models import Vehicle
 
 
 class MpcGear(MpcMld):
-    """This is an MLD based MPC for a PWA system, that includes a discrete inputs which scale the input
+    """This is an MLD based MPC that uses discrete inputs that scale the input
     u. Inspired by the idea of gears, where u is scaled based on a choice of gear. The gear choices for
-    each control signal are assumed decoupled."""
+    each control signal are assumed decoupled.
+    The dynamics are provided as a PWA system dict."""
 
     def __init__(self, system: dict, N: int) -> None:
-        """Init the MLD model and the MPC.
+        """Init the MLD model of PWA system and the MPC wit hdiscrete inputs.
         Parameters
         ----------
         system: dict
@@ -21,14 +22,13 @@ class MpcGear(MpcMld):
         N:int
             Prediction horizon length."""
 
-        # init the PWA system as normal
+        # init the PWA system - MLD constraints and binary variables for PWA dynamics
         super().__init__(system, N)
 
-    def setup_gears(self, N: int, acc: ACC, F: np.ndarray, G: np.ndarray):
+    def setup_gears(self, N: int, F: np.ndarray, G: np.ndarray):
         # now we constrain the input u to include the gears
-
         nu = self.u.shape[0]
-        num_gears = len(acc.b)
+        num_gears = len(Vehicle.b)
 
         # new vars
         b = self.mpc_model.addMVar(
@@ -52,8 +52,7 @@ class MpcGear(MpcMld):
         )
 
         # constraints along prediction horizon
-
-        # first remove control constraints and readd them to u_g
+        # first remove control constraints and re-add them to u_g
         target_prefix = "control constraints"
         self.mpc_model.update()
         matching_constraints = [
@@ -82,30 +81,30 @@ class MpcGear(MpcMld):
                 )
 
                 for j in range(num_gears):  # for each gear
-                    M = acc.u_max * acc.b[j]
-                    m = -acc.u_max * acc.b[j]
+                    M: float = Vehicle.u_max * Vehicle.b[j]
+                    m: float = Vehicle.u_min * Vehicle.b[j]
                     # the following four constraints make b_i,j = sigma_i,j * H[i] * u_g[i]
                     self.mpc_model.addConstr(b[j, i, [k]] <= M * sigma[j, i, [k]])
                     self.mpc_model.addConstr(b[j, i, [k]] >= m * sigma[j, i, [k]])
 
                     self.mpc_model.addConstr(
                         b[j, i, [k]]
-                        <= acc.b[j] * u_g[i, [k]] - m * (1 - sigma[j, i, [k]])
+                        <= Vehicle.b[j] * u_g[i, [k]] - m * (1 - sigma[j, i, [k]])
                     )
                     self.mpc_model.addConstr(
                         b[j, i, [k]]
-                        >= acc.b[j] * u_g[i, [k]] - M * (1 - sigma[j, i, [k]])
+                        >= Vehicle.b[j] * u_g[i, [k]] - M * (1 - sigma[j, i, [k]])
                     )
 
                     # next constraints force sigma to be active only when
                     # velocity conditions are satisfied.
-                    M = acc.x2_max - acc.vh[j]
+                    M = Vehicle.v_max - Vehicle.vh[j]
                     # pick out velocity associated with i'th control signal
-                    f = self.x[2 * i + 1, [k]] - acc.vh[j]
+                    f = self.x[2 * i + 1, [k]] - Vehicle.vh[j]
                     self.mpc_model.addConstr(f <= M * (1 - sigma[j, i, [k]]))
 
-                    M = acc.vl[j] - acc.x2_min
-                    f = acc.vl[j] - self.x[2 * i + 1, [k]]
+                    M = Vehicle.vl[j] - Vehicle.v_min
+                    f = Vehicle.vl[j] - self.x[2 * i + 1, [k]]
                     self.mpc_model.addConstr(f <= M * (1 - sigma[j, i, [k]]))
 
         self.u_g = u_g
@@ -113,7 +112,7 @@ class MpcGear(MpcMld):
         self.b = b
 
     def solve_mpc(self, state):
-        # override to return the actual input u_g
+        """Solve mpc for gear and throttle."""
         u_0, info = super().solve_mpc(state)
         if self.mpc_model.Status == 2:  # check for successful solve
             u_g = self.u_g.X
@@ -123,9 +122,10 @@ class MpcGear(MpcMld):
                 for k in range(self.N):
                     gears[i, k] = sig[:, i, k].argmax() + 1
         else:
-            u_g = np.zeros((self.m, self.N))
-            gears = np.ones((self.m, self.N))  # default set all gears to one if infeas
-
+            raise RuntimeWarning(f'gear mpc for state {state} is infeasible.')
+            # u_g = np.zeros((self.m, self.N))
+            # gears = 6* np.ones((self.m, self.N))  # default set all gears 
+            
         info["u"] = u_g
         self.gears_pred = gears
         return np.vstack((u_g[:, [0]], gears[:, [0]])), info

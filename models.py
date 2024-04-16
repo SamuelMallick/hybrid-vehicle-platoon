@@ -32,7 +32,7 @@ class GearTransimission:
         if v < 2.0706 or v > 59.9715:
             raise RuntimeError(f"Velocity value out of range {2.0706} - {59.9715}.")
 
-        j = j - 1  # shidt index as liss start from 0
+        j = j - 1  # shift index as list start from 0
 
         if v <= self.v[j][0] or v >= self.v[j][3]:
             raise RuntimeError(
@@ -82,9 +82,10 @@ class Vehicle:
     ]
     vh = [9.46, 13.04, 18.15, 23.90, 32.93, 45.84]
     v_min, v_max = vl[0], vh[-1]  # velocity limits based on gear ranges
+    u_min, u_max = -1.0, 1.0  # throttle input limits
     p_min, p_max = (
-        0,
-        10000,
+        0.0,
+        10000.0,
     )  # abritrary position bounds in PWA models (conversion to PWA requires bounded states)
     Te_max = 80  # maximum engine torque - constant in the range 200 < w < 480
 
@@ -110,7 +111,7 @@ class Vehicle:
 
     def step(self, x: np.ndarray, u: float, j: int, ts: float):
         """Step local non-linear hybrid dynamics with euler step of ts seconds."""
-        if np.abs(u) > 1 + 1e5: # small numerical tolerance for control bound
+        if np.abs(u) > 1 + 1e5:  # small numerical tolerance for control bound
             raise ValueError("Control u is bounded -1 <= u <= 1.")
         x_new = x + ts * (self.A(x) + self.B(x, j) * u)
 
@@ -229,7 +230,7 @@ class PwaFrictionVehicle(Vehicle):
         E = np.array([[self.p_max], [-self.p_min], [self.v_min], [self.v_max]])
         F = np.array([[1], [-1]])
         G = np.array(
-            [[1], [1]]
+            [[self.u_max], [-self.u_min]]
         )  # velocity bounded -1 <= u <= 1 as it is normalized throttle
 
         return {
@@ -334,7 +335,7 @@ class PwaGearVehicle(PwaFrictionVehicle):
         E = np.array([[self.p_max], [-self.p_min], [self.v_max], [-self.v_min]])
         F = np.array([[1], [-1]])
         G = np.array(
-            [[1], [1]]
+            [[self.u_max], [-self.u_min]]
         )  # velocity bounded -1 <= u <= 1 as it is normalized throttle
 
         return {
@@ -424,7 +425,7 @@ if __name__ == "__main__":
     x_1[:, [0]] = x0
     x_2[:, [0]] = x0
     for t in range(test_len - 1):
-        j = car_2.get_pwa_gear_from_speed(
+        j = car_2.get_gear_from_velocity(
             x_2[1, [t]].item()
         )  # non-linear model uses same gear as PWA
         x_1[:, [t + 1]] = car_1.step(x_2[:, [t]], u[:, [t]].item(), j, ts)
