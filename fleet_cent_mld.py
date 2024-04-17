@@ -11,7 +11,7 @@ from scipy.linalg import block_diag
 
 from env import PlatoonEnv
 from misc.common_controller_params import Params, Sim
-from misc.spacing_policy import ConstantSpacingPolicy, SpacingPolicy, ConstantTimePolicy
+from misc.spacing_policy import ConstantSpacingPolicy, SpacingPolicy
 from models import Platoon
 from mpcs.cent_mld import MpcMldCent
 from mpcs.mpc_gear import MpcGear, MpcNonlinearGear
@@ -89,9 +89,7 @@ def simulate(sim: Sim, save: bool = False, plot: bool = True):
     leader_trajectory = Sim.leader_trajectory
     leader_x = leader_trajectory.get_leader_trajectory()
     # vehicles
-    platoon = Platoon(
-        n, vehicle_type=Sim.vehicle_model_type
-    )
+    platoon = Platoon(n, vehicle_type=Sim.vehicle_model_type)
     systems = platoon.get_vehicle_system_dicts(ts)
 
     # env

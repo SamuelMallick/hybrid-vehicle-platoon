@@ -84,7 +84,7 @@ class MpcMldCent(MpcMldCentDecup):
         # control effort cost
         cost += sum(
             [
-                self.cost_func(u_l[i][:, k], self.Q_u)
+                self.cost_func(u_l[i][:, [k]], self.Q_u)
                 for i in range(self.n)
                 for k in range(self.N)
             ]
