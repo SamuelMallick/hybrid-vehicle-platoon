@@ -57,9 +57,11 @@ class StopAndGoLeaderTrajectory(LeaderTrajectory):
         x[:, [0]] = np.array([[self.p0], [self.vh]])
         v = self.vh
         for k in range(self.trajectory_len - 1):
+            x[:, [k + 1]] = x[:, [k]] + self.ts * np.array([[v], [0]])
             if k >= self.v_change_steps[0] and k < self.v_change_steps[1]:
                 v = self.vl
+                x[1, [k + 1]] = v
             elif k >= self.v_change_steps[1]:
                 v = self.vh
-            x[:, [k + 1]] = x[:, [k]] + self.ts * np.array([[v], [0]])
+                x[1, [k + 1]] = v
         return x

@@ -65,16 +65,16 @@ class MpcMldCent(MpcMldCentDecup):
         # tracking cost
         cost += sum(
             [
-                self.cost_func(x_l[0][:, k] - self.leader_traj[:, k], self.Q_x)
+                self.cost_func(x_l[0][:, [k]] - self.leader_traj[:, [k]], self.Q_x)
                 for k in range(self.N + 1)
             ]
         )
         cost += sum(
             [
                 self.cost_func(
-                    x_l[i][:, k]
-                    - x_l[i - 1][:, k]
-                    - spacing_policy.spacing(x_l[i][:, k]),
+                    x_l[i][:, [k]]
+                    - x_l[i - 1][:, [k]]
+                    - spacing_policy.spacing(x_l[i][:, [k]]),
                     self.Q_x,
                 )
                 for i in range(1, self.n)

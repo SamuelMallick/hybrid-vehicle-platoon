@@ -11,8 +11,11 @@ from scipy.linalg import block_diag
 
 from env import PlatoonEnv
 from misc.common_controller_params import Params, Sim
-from misc.leader_trajectory import ConstantVelocityLeaderTrajectory
-from misc.spacing_policy import ConstantSpacingPolicy, SpacingPolicy
+from misc.leader_trajectory import (
+    ConstantVelocityLeaderTrajectory,
+    StopAndGoLeaderTrajectory,
+)
+from misc.spacing_policy import ConstantSpacingPolicy, SpacingPolicy, ConstantTimePolicy
 from models import Platoon
 from mpcs.cent_mld import MpcMldCent
 from mpcs.mpc_gear import MpcGear, MpcNonlinearGear
@@ -25,15 +28,19 @@ np.random.seed(2)
 PLOT = True
 SAVE = False
 
-n = 1  # num cars
+n = 4  # num cars
 N = 5  # controller horizon
-ep_len = 50  # length of episode (sim len)
+ep_len = 200  # length of episode (sim len)
 ts = Params.ts
 
 
-spacing_policy = ConstantSpacingPolicy(50)
-leader_trajectory = ConstantVelocityLeaderTrajectory(
-    p=3000, v=20, trajectory_len=ep_len + 50, ts=ts
+# spacing_policy = ConstantSpacingPolicy(50)
+# leader_trajectory = ConstantVelocityLeaderTrajectory(
+#     p=3000, v=20, trajectory_len=ep_len + 50, ts=ts
+# )
+spacing_policy = ConstantTimePolicy(10, 3)
+leader_trajectory = StopAndGoLeaderTrajectory(
+    p=3000, vh=30, vl=10, v_change_steps=[10, 50], trajectory_len=ep_len + 50, ts=ts
 )
 leader_x = leader_trajectory.get_leader_trajectory()
 
@@ -92,7 +99,7 @@ class TrackingCentralizedAgent(MldAgent):
 
 
 # vehicles
-platoon = Platoon(n, vehicle_type=Sim.vehicle_model_type)
+platoon = Platoon(n, vehicle_type=Sim.vehicle_model_type, masses=[500, 1500, 800, 1000])
 systems = platoon.get_vehicle_system_dicts(ts)
 
 # env

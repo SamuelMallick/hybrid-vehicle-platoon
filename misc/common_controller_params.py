@@ -4,8 +4,8 @@ import numpy as np
 
 
 class Sim:
-    vehicle_model_type: Literal["nonlinear", "pwa_friction", "pwa_gear"] = "nonlinear"
-    start_from_platoon: bool = False
+    vehicle_model_type: Literal["nonlinear", "pwa_friction", "pwa_gear"] = "pwa_gear"
+    start_from_platoon: bool = True
 
 
 class Params:

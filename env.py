@@ -31,7 +31,7 @@ class PlatoonEnv(gym.Env[npt.NDArray[np.floating], npt.NDArray[np.floating]]):
         ep_len: int = 100,
         ts: float = 1,
         leader_trajectory: LeaderTrajectory = ConstantVelocityLeaderTrajectory(
-            p=1000, v=20, trajectory_len=150, ts=1
+            p=3000, v=20, trajectory_len=150, ts=1
         ),
         spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
         d_safe: float = 25,
@@ -129,9 +129,7 @@ class PlatoonEnv(gym.Env[npt.NDArray[np.floating], npt.NDArray[np.floating]]):
         cost += sum(
             [
                 self.cost_func(
-                    x[i]
-                    - x[i - 1]
-                    - (self.spacing_policy.spacing(x[i])).reshape(x[i].shape),
+                    x[i] - x[i - 1] - (self.spacing_policy.spacing(x[i])),
                     self.Q_x,
                 )
                 for i in range(1, self.n)

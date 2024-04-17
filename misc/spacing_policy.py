@@ -16,10 +16,10 @@ class ConstantSpacingPolicy(SpacingPolicy):
 
     def __init__(self, d0: float) -> None:
         super().__init__()
-        self.d0 = d0
+        self.d = np.array([[-d0, 0]]).T
 
     def spacing(self, x: np.ndarray):
-        return np.array([-self.d0, 0])
+        return self.d
 
 
 class ConstantTimePolicy(SpacingPolicy):
@@ -27,8 +27,11 @@ class ConstantTimePolicy(SpacingPolicy):
 
     def __init__(self, d0: float, t0: float) -> None:
         super().__init__()
-        self.d0 = d0
-        self.t0 = t0
+        # spacing is A@x + b
+        self.A = np.array([[0, -t0], [0, 0]])
+        self.b = np.array([[-d0], [0]])
 
     def spacing(self, x: np.ndarray):
-        return np.array([-self.t0 * x[1, 0] - self.d0, 0])
+        if len(x.shape) == 1:
+            x = x.reshape(x.shape[0], 1)
+        return self.A @ x + self.b
