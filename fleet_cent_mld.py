@@ -28,20 +28,13 @@ np.random.seed(2)
 PLOT = True
 SAVE = False
 
-n = 4  # num cars
-N = 5  # controller horizon
-ep_len = 200  # length of episode (sim len)
+n = Sim.n  # num cars
+N = Sim.N  # controller horizon
+ep_len = Sim.ep_len  # length of episode (sim len)
 ts = Params.ts
 
-
-# spacing_policy = ConstantSpacingPolicy(50)
-# leader_trajectory = ConstantVelocityLeaderTrajectory(
-#     p=3000, v=20, trajectory_len=ep_len + 50, ts=ts
-# )
-spacing_policy = ConstantTimePolicy(10, 3)
-leader_trajectory = StopAndGoLeaderTrajectory(
-    p=3000, vh=30, vl=10, v_change_steps=[10, 50], trajectory_len=ep_len + 50, ts=ts
-)
+spacing_policy= Sim.spacing_policy
+leader_trajectory = Sim.leader_trajectory
 leader_x = leader_trajectory.get_leader_trajectory()
 
 
