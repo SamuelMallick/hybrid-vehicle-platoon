@@ -364,4 +364,4 @@ def simulate(sim: Sim, save: bool = False, plot: bool = True):
 
 
 if __name__ == "__main__":
-    simulate(Sim(), save=True)
+    simulate(Sim())
