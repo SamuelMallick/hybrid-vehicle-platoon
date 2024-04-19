@@ -12,7 +12,7 @@ from scipy.linalg import block_diag
 from env import PlatoonEnv
 from misc.common_controller_params import Params, Sim
 from misc.spacing_policy import ConstantSpacingPolicy, SpacingPolicy
-from models import Platoon, PwaGearVehicle, Vehicle
+from models import Platoon, Vehicle
 from mpcs.mpc_gear import MpcGear
 from plot_fleet import plot_fleet
 
@@ -80,12 +80,14 @@ class LocalMpc(MpcMldCentDecup):
             x_f1 = self.x[0:nx_l, :]  # state of vehicle directly in front
             x_me = self.x[nx_l : 2 * nx_l, :]  # local state
             if num_vehicles_behind > 0:
-                x_b1 = self.x[2 * nx_l : 3 * nx_l, :]  # state of vehicle directly behind
+                x_b1 = self.x[
+                    2 * nx_l : 3 * nx_l, :
+                ]  # state of vehicle directly behind
         else:
             x_me = self.x[0:nx_l, :]  # local state
             if num_vehicles_behind > 0:
                 x_b1 = self.x[nx_l : 2 * nx_l, :]  # state of vehicle directly behind
-        
+
         x_l = [self.x[i * nx_l : (i + 1) * nx_l, :] for i in range(self.n)]
         u_l = [u[i * self.nu_l : (i + 1) * self.nu_l, :] for i in range(self.n)]
 
@@ -156,7 +158,9 @@ class LocalMpc(MpcMldCentDecup):
                         self.Q_x,
                     )
                     + self.cost_func(
-                        x_me[:, [k]] - x_f1[:, [k]] - spacing_policy.spacing(x_me[:, [k]]),
+                        x_me[:, [k]]
+                        - x_f1[:, [k]]
+                        - spacing_policy.spacing(x_me[:, [k]]),
                         self.Q_x,
                     )
                     for k in range(self.N + 1)
@@ -167,7 +171,9 @@ class LocalMpc(MpcMldCentDecup):
             cost += sum(
                 [
                     self.cost_func(
-                        x_b1[:, [k]] - x_me[:, [k]] - spacing_policy.spacing(x_b1[:, [k]]),
+                        x_b1[:, [k]]
+                        - x_me[:, [k]]
+                        - spacing_policy.spacing(x_b1[:, [k]]),
                         self.Q_x,
                     )
                     for k in range(self.N + 1)
@@ -370,7 +376,7 @@ class TrackingEventBasedCoordinator(MldAgent):
         self.num_iters = event_iters
         self.leader_x = leader_x
         self.ts = ts
-        self.N =  N
+        self.N = N
         self.discrete_gears = discrete_gears
 
         # store control and state guesses
@@ -574,9 +580,7 @@ class TrackingEventBasedCoordinator(MldAgent):
                 ) * np.ones((self.nu_l, self.N))
             else:
                 j = self.vehicles[i].get_gear_from_velocity(xl[1, 0])
-                self.gear_guesses[i] = j * np.ones(
-                    (self.nu_l, self.N)
-                )
+                self.gear_guesses[i] = j * np.ones((self.nu_l, self.N))
                 self.control_guesses[i] = self.vehicles[i].get_u_for_constant_vel(
                     xl[1, 0], j
                 ) * np.ones((self.nu_l, self.N))
@@ -626,7 +630,11 @@ def simulate(sim: Sim, event_iters: int, save: bool = False, plot: bool = True):
         mpcs = [
             LocalMpc(
                 N,
-                pwa_systems=systems[:2] if i == 0 else (systems[-2:] if i == n-1 else systems[i-1:i+2]),
+                pwa_systems=(
+                    systems[:2]
+                    if i == 0
+                    else (systems[-2:] if i == n - 1 else systems[i - 1 : i + 2])
+                ),
                 num_vehicles_in_front=i if i < 2 else 2,
                 num_vehicles_behind=(n - 1) - i if i > n - 3 else 2,
                 spacing_policy=spacing_policy,
@@ -638,7 +646,11 @@ def simulate(sim: Sim, event_iters: int, save: bool = False, plot: bool = True):
         mpcs = [
             LocalMpcGear(
                 N,
-                systems=systems[:2] if i == 0 else (systems[-2:] if i == n-1 else systems[i-1:i+2]),
+                systems=(
+                    systems[:2]
+                    if i == 0
+                    else (systems[-2:] if i == n - 1 else systems[i - 1 : i + 2])
+                ),
                 num_vehicles_in_front=i if i < 2 else 2,
                 num_vehicles_behind=(n - 1) - i if i > n - 3 else 2,
                 spacing_policy=spacing_policy,

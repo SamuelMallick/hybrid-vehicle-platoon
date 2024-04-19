@@ -283,26 +283,28 @@ class PwaFrictionVehicle(Vehicle):
             "F": F,
             "G": G,
         }
-    
+
     def get_gear_from_velocity(self, v: float):
         """Get a gear j that is valid for the velocity v."""
         if v < self.v_min or v > self.v_max:
-            raise ValueError(f'Velocity {v} is not within bounds {self.v_min}/{self.v_max}')
+            raise ValueError(
+                f"Velocity {v} is not within bounds {self.v_min}/{self.v_max}"
+            )
         for i in range(len(self.b)):
-            if v > self.vl[i] and v < self.vh[i]:   # return first valid gear found
+            if v > self.vl[i] and v < self.vh[i]:  # return first valid gear found
                 return i + 1
-        raise ValueError(f'No gear found for velocity {v}')
-    
+        raise ValueError(f"No gear found for velocity {v}")
+
     def get_u_for_constant_vel(self, v: float, j: int):
         """Get the control input which will keep the velocity v constant with gear j, as by the PWA dynamics."""
         x = np.array([[0], [v]])  # first state does not matter for this pwa sys
         u = np.array([[0]])  # neither does control
 
-        if j < 1 or j > 6:  
-            raise ValueError(f'{j} is not a valid gear.')
+        if j < 1 or j > 6:
+            raise ValueError(f"{j} is not a valid gear.")
         j = j - 1
         if v < self.vl[j] or v > self.vh[j]:
-            raise ValueError(f'Velocity {v} is not valid for gear {j+1}')
+            raise ValueError(f"Velocity {v} is not valid for gear {j+1}")
 
         for i in range(len(self.system["S"])):
             if all(
@@ -314,7 +316,7 @@ class PwaFrictionVehicle(Vehicle):
             ):
                 # This is VERY specific to this system, DO NOT reuse this code on other PWA systems.
                 # we are setting the \dot{v} = 0, and solving for the input - using cont time model
-                return (1 / (self.b[j]*self.system["B"][i][1, 0])) * (
+                return (1 / (self.b[j] * self.system["B"][i][1, 0])) * (
                     -self.system["A"][i][1, 1] * v - self.system["c"][i][1, 0]
                 )
 
