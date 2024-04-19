@@ -11,15 +11,15 @@ plt.style.use("bmh")
 
 nx_l = 2
 plot_len = 100
-name = "gadmm"
+name = "cent"
 DG = False
 Q = True
 HOM = True
-n = 5
+n = 6
 N = 5
 LT = 1
 with open(
-    f"data/{name}_n_{n}_N_{N}_Q_{Q}_DG_{DG}_HOM_{HOM}_LT_{LT}.pkl",
+    f"data/task_2/{name}_n_task_2_{n}.pkl",
     "rb",
 ) as file:
     X = pickle.load(file)
@@ -51,8 +51,8 @@ axs[0].fill_between(
 )
 axs[0].set_ylabel(r"pos ($m$)")
 axs[1].set_ylabel(r"vel ($ms^{-1}$)")
-axs[1].set_ylim(0, 40)
-axs[0].set_ylim(0, ylim)
+# axs[1].set_ylim(0, 40)
+# axs[0].set_ylim(0, ylim)
 axs[1].set_xlabel(r"time step $k$")
 axs[0].legend(["reference"])
 

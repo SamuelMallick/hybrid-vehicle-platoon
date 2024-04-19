@@ -2,7 +2,6 @@ import pickle
 
 import matplotlib.pyplot as plt
 import numpy as np
-from dmpcpwa.utils.tikz import save2tikz
 
 plt.rc("text", usetex=True)
 plt.rc("font", size=14)
@@ -14,29 +13,19 @@ types = [
     "cent",
     "decent",
     "seq",
-    "event4",
-    "event6",
-    "event10",
-    "admm20",
-    "admm50",
 ]
 leg = [
     "decent",
     "seq",
-    "event (4)",
-    "event (6)",
-    "event (10)",
-    "admm (20)",
-    "admm (50)",
 ]
-num_event_vars = 3
-num_admm_vars = 2
+num_event_vars = 0
+num_admm_vars = 0
 
 LT = 1
 HOM = True
 DG = False
 Q = True
-n_sw = [i for i in range(2, 11)]
+n_sw = [i for i in range(2, 7)]
 N = 5
 
 track_costs = []
@@ -55,7 +44,7 @@ for type in types:
     viols.append([])
     for n in n_sw:
         with open(
-            f"{type}_n_{n}_N_{N}_Q_{Q}_DG_{DG}_HOM_{HOM}_LT_{LT}.pkl",
+            f"data/task_2/{type}_n_task_2_{n}.pkl",
             "rb",
         ) as file:
             X = pickle.load(file)
@@ -98,7 +87,7 @@ error_upper = [
 ]
 
 # plot perf drop
-y_lim = 200
+y_lim = 50
 _, axs = plt.subplots(
     6,
     1,
@@ -178,7 +167,7 @@ for i in range(1, counter):
 axs[5].set_ylabel(r"$\#nodes$")
 axs[5].set_yscale("log")
 axs[5].set_xlabel("$n$")
-save2tikz(plt.gcf())
+# save2tikz(plt.gcf())
 
 _, axs = plt.subplots(3, 1, constrained_layout=True, sharex=True)
 for i in range(2):

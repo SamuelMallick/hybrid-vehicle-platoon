@@ -24,11 +24,11 @@ class Params:
 
 
 class Sim:
-    vehicle_model_type: Literal["nonlinear", "pwa_friction", "pwa_gear"] = "pwa_friction"
+    vehicle_model_type: Literal["nonlinear", "pwa_friction", "pwa_gear"] = "pwa_gear"
     start_from_platoon: bool = False
     quadratic_cost: bool = True
     n = 5
-    N = 4
+    N = 3
     ep_len = 100
     spacing_policy = ConstantSpacingPolicy(50)
     leader_trajectory = ConstantVelocityLeaderTrajectory(
