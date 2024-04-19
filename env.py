@@ -68,20 +68,21 @@ class PlatoonEnv(gym.Env[npt.NDArray[np.floating], npt.NDArray[np.floating]]):
         self.leader_x = self.leader_trajectory.get_leader_trajectory()
         self.x = np.tile(np.array([[0], [0]]), (self.n, 1))
 
+        np.random.seed(2)
+        # create once 100 random starting states
+        starting_velocities = [30] + [
+            20 * np.random.random() + 5 for i in range(100)
+        ]  # starting velocities between 5-40 ms-1
+        # starting positions between 0-1000 meters, with some forced spacing
+        front_pos = 3000.0
+        spread = 50
+        spacing = 50
+        starting_positions = [front_pos]
+        for i in range(1, 100):
+            starting_positions.append(
+                -spread * np.random.random() + starting_positions[-1] - spacing
+            )
         if not self.start_from_platoon:
-            starting_velocities = [30] + [
-                20 * np.random.random() + 5 for i in range(self.n - 1)
-            ]  # starting velocities between 5-40 ms-1
-
-            # starting positions between 0-1000 meters, with some forced spacing
-            front_pos = 3000.0
-            spread = 50
-            spacing = 50
-            starting_positions = [front_pos]
-            for i in range(1, self.n):
-                starting_positions.append(
-                    -spread * np.random.random() + starting_positions[-1] - spacing
-                )
             # order the agents by starting distance
             for i in range(self.n):
                 init_pos = max(starting_positions)

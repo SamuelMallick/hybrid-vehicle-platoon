@@ -80,16 +80,17 @@ class TrackingCentralizedAgent(MldAgent):
 
 
 def simulate(sim: Sim, save: bool = False, plot: bool = True):
-    n = Sim.n  # num cars
-    N = Sim.N  # controller horizon
-    ep_len = Sim.ep_len  # length of episode (sim len)
+    n = sim.n  # num cars
+    N = sim.N  # controller horizon
+    ep_len = sim.ep_len  # length of episode (sim len)
     ts = Params.ts
+    masses = sim.masses
 
-    spacing_policy = Sim.spacing_policy
-    leader_trajectory = Sim.leader_trajectory
+    spacing_policy = sim.spacing_policy
+    leader_trajectory = sim.leader_trajectory
     leader_x = leader_trajectory.get_leader_trajectory()
     # vehicles
-    platoon = Platoon(n, vehicle_type=Sim.vehicle_model_type)
+    platoon = Platoon(n, vehicle_type=sim.vehicle_model_type, masses=masses)
     systems = platoon.get_vehicle_system_dicts(ts)
 
     # env
@@ -100,21 +101,21 @@ def simulate(sim: Sim, save: bool = False, plot: bool = True):
                 platoon=platoon,
                 leader_trajectory=leader_trajectory,
                 spacing_policy=spacing_policy,
-                start_from_platoon=Sim.start_from_platoon,
+                start_from_platoon=sim.start_from_platoon,
             ),
             max_episode_steps=ep_len,
         )
     )
 
     # mpcs
-    if Sim.vehicle_model_type == "pwa_gear":
+    if sim.vehicle_model_type == "pwa_gear":
         mpc = MpcMldCent(n, N, systems, spacing_policy=spacing_policy)
-    elif Sim.vehicle_model_type == "pwa_friction":
+    elif sim.vehicle_model_type == "pwa_friction":
         mpc = MpcGearCent(n, N, systems, spacing_policy=spacing_policy)
-    elif Sim.vehicle_model_type == "nonlinear":
+    elif sim.vehicle_model_type == "nonlinear":
         mpc = MpcNonlinearGearCent(n, N, systems, spacing_policy=spacing_policy)
     else:
-        raise ValueError(f"{Sim.vehicle_model_type} is not a valid vehicle model type.")
+        raise ValueError(f"{sim.vehicle_model_type} is not a valid vehicle model type.")
 
     # agent
     agent = TrackingCentralizedAgent(mpc, ep_len, N, leader_x)
@@ -140,7 +141,7 @@ def simulate(sim: Sim, save: bool = False, plot: bool = True):
 
     if save:
         with open(
-            f"cent_{Sim.id}" + ".pkl",
+            f"cent_{sim.id}" + ".pkl",
             "wb",
         ) as file:
             pickle.dump(X, file)

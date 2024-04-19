@@ -1,5 +1,4 @@
 import pickle
-import sys
 
 import gurobipy as gp
 import numpy as np
@@ -10,8 +9,10 @@ from gymnasium.wrappers import TimeLimit
 from mpcrl.wrappers.envs import MonitorEpisodes
 from scipy.linalg import block_diag
 
-from env import CarFleet
-from models import ACC
+from env import PlatoonEnv
+from misc.common_controller_params import Params, Sim
+from misc.spacing_policy import ConstantSpacingPolicy, SpacingPolicy
+from models import Platoon, PwaGearVehicle, Vehicle
 from mpcs.mpc_gear import MpcGear
 from plot_fleet import plot_fleet
 
@@ -19,269 +20,274 @@ np.random.seed(2)
 
 DEBUG = False
 
-PLOT = True
-SAVE = False
-
-n = 3  # num cars
-N = 5  # controller horizon
-COST_2_NORM = True
-DISCRETE_GEARS = False
-HOMOGENOUS = True
-LEADER_TRAJ = 2  # "1" - constant velocity leader traj. Vehicles start from random ICs. "2" - accelerating leader traj. Vehicles start in perfect platoon.
-
-num_iters = 4
-if len(sys.argv) > 1:
-    n = int(sys.argv[1])
-if len(sys.argv) > 2:
-    N = int(sys.argv[2])
-if len(sys.argv) > 3:
-    COST_2_NORM = bool(int(sys.argv[3]))
-if len(sys.argv) > 4:
-    DISCRETE_GEARS = bool(int(sys.argv[4]))
-if len(sys.argv) > 5:
-    HOMOGENOUS = bool(int(sys.argv[5]))
-if len(sys.argv) > 6:
-    LEADER_TRAJ = int(sys.argv[6])
-if len(sys.argv) > 7:
-    num_iters = int(sys.argv[7])
-
-random_ICs = False
-if LEADER_TRAJ == 1:
-    random_ICs = True
-
 threshold = 10  # cost improvement must be more than this to consider communication
-follow_bias = 1  # a slight bias added to the cost to favour following the vehicle in front in case of tiebrake in cost improvements
-
-ep_len = 100  # length of episode (sim len)
-
-acc = ACC(ep_len, N, leader_traj=LEADER_TRAJ)
-nx_l = acc.nx_l
-nu_l = acc.nu_l
-Q_x_l = acc.Q_x_l
-Q_u_l = acc.Q_u_l
-Q_du_l = acc.Q_du_l
-sep = acc.sep
-d_safe = acc.d_safe
-w = acc.w  # slack variable penalty
-leader_state = acc.get_leader_state()
 
 
 class LocalMpc(MpcMldCentDecup):
-    """Mpc for a vehicle with a car in front and behind. Local state has car
+    """Mpc for a vehicle, solving for states of vehicle in front and behind. Local state has car
     is organised with x = [x_front, x_me, x_back]."""
 
+    Q_x = Params.Q_x
+    Q_u = Params.Q_u
+    Q_du = Params.Q_du
+    w = Params.w
+    a_acc = Params.a_acc
+    a_dec = Params.a_dec
+    ts = Params.ts
+    d_safe = Params.d_safe
+
     def __init__(
-        self, systems: list[dict], n: int, N: int, pos_in_fleet: int, num_vehicles: int
+        self,
+        N: int,
+        pwa_systems: list[dict],
+        num_vehicles_in_front: int,
+        num_vehicles_behind: int,
+        spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
+        quadratic_cost: bool = True,
     ) -> None:
-        super().__init__(systems, n, N)
-        self.setup_cost_and_constraints(self.u, pos_in_fleet, num_vehicles)
+        """Initialize the local MPC. This MPC optimizes also considering neighboring vehicles.
+        The number of neighboring vehicles is passed in through num_vehicles_in_front/num_vehicles_behind.
+        """
+        self.n = len(pwa_systems)
+        super().__init__(pwa_systems, self.n, N)
+        self.setup_cost_and_constraints(
+            self.u,
+            num_vehicles_in_front,
+            num_vehicles_behind,
+            spacing_policy,
+            quadratic_cost,
+        )
 
-    def setup_cost_and_constraints(self, u, pos_in_fleet, num_vehicles):
-        if COST_2_NORM:
-            cost_func = self.min_2_norm
+    def setup_cost_and_constraints(
+        self,
+        u,
+        num_vehicles_in_front: int,
+        num_vehicles_behind: int,
+        spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
+        quadratic_cost: bool = True,
+    ):
+        """Set up  cost and constraints for vehicle. Penalises the u passed in."""
+        if quadratic_cost:
+            self.cost_func = self.min_2_norm
         else:
-            cost_func = self.min_1_norm
+            self.cost_func = self.min_1_norm
 
-        self.pos_in_fleet = pos_in_fleet
-        self.num_vehicles = num_vehicles
-        # the index of the local vehicles position is different if it is the leader or trailer
-        if pos_in_fleet == 1:
-            my_index = 0
-            b_index = 2
-            self.b_index = b_index
-        elif pos_in_fleet == num_vehicles:
-            my_index = 2
-            f_index = 0
-            self.f_index = f_index
+        nx_l = Vehicle.nx_l
+        self.nu_l = Vehicle.nu_l
+
+        # break up state and control into local and that of other vehicles
+        if num_vehicles_in_front > 0:
+            x_f1 = self.x[0:nx_l, :]  # state of vehicle directly in front
+            x_me = self.x[nx_l : 2 * nx_l, :]  # local state
+            if num_vehicles_behind > 0:
+                x_b1 = self.x[2 * nx_l : 3 * nx_l, :]  # state of vehicle directly behind
         else:
-            my_index = 2
-            f_index = 0
-            b_index = 4
-            self.f_index = f_index
-            self.b_index = b_index
-        self.my_index = my_index
+            x_me = self.x[0:nx_l, :]  # local state
+            if num_vehicles_behind > 0:
+                x_b1 = self.x[nx_l : 2 * nx_l, :]  # state of vehicle directly behind
+        
+        x_l = [self.x[i * nx_l : (i + 1) * nx_l, :] for i in range(self.n)]
+        u_l = [u[i * self.nu_l : (i + 1) * self.nu_l, :] for i in range(self.n)]
 
-        # constraints and slacks for cars in front
-        if pos_in_fleet > 1:
-            self.s_front = self.mpc_model.addMVar(
-                (1, N + 1), lb=0, ub=float("inf"), name="s_front"
+        # slack vars for constraints with vehicles in front and behind
+        self.s_f1 = self.mpc_model.addMVar(
+            (self.N + 1), lb=0, ub=float("inf"), name="s_f1"
+        )
+        self.s_b1 = self.mpc_model.addMVar(
+            (self.N + 1), lb=0, ub=float("inf"), name="s_b1"
+        )
+        self.s_f2 = self.mpc_model.addMVar(
+            (self.N + 1), lb=0, ub=float("inf"), name="s_f2"
+        )
+        self.s_b2 = self.mpc_model.addMVar(
+            (self.N + 1), lb=0, ub=float("inf"), name="s_b2"
+        )
+        # set these slacks to 0 if no associated vehilces. Also create state copies for vehicles 1 neighbor away
+        if num_vehicles_in_front < 2:
+            self.leader_x = self.mpc_model.addMVar(
+                (nx_l, self.N + 1), lb=0, ub=0, name="leader_x"
             )
-            for k in range(N + 1):
-                self.mpc_model.addConstr(
-                    self.x[f_index, [k]] - self.x[my_index, [k]]
-                    >= d_safe - self.s_front[:, [k]],
-                    name=f"safety_ahead_{k}",
-                )
-            if pos_in_fleet > 2:
-                self.s_front_2 = self.mpc_model.addMVar(
-                    (1, N + 1), lb=0, ub=float("inf"), name="s_front_2"
-                )
-                self.x_front_2 = self.mpc_model.addMVar(
-                    (nx_l, N + 1), lb=0, ub=0, name="x_front_2"
-                )
-                for k in range(N + 1):
-                    self.mpc_model.addConstr(
-                        self.x_front_2[0, [k]] - self.x[f_index, [k]]
-                        >= d_safe - self.s_front_2[:, [k]],
-                        name=f"safety_ahead_2_{k}",
+            self.s_f2.ub = 0
+            if num_vehicles_in_front < 1:
+                self.s_f1.ub = 0
+        else:
+            self.x_f2 = self.mpc_model.addMVar(
+                (nx_l, self.N + 1), lb=-1e6, ub=1e6, name="x_f2"
+            )
+        if num_vehicles_behind < 2:
+            self.s_b2.ub = 0
+            if num_vehicles_behind < 1:
+                self.s_b1.ub = 0
+        else:
+            self.x_b2 = self.mpc_model.addMVar(
+                (nx_l, self.N + 1), lb=-1e6, ub=1e6, name="x_b2"
+            )
+
+        # cost func
+        cost = 0
+        # tracking cost for vehicles in front
+        if num_vehicles_in_front == 0:  # leader
+            cost += sum(
+                [
+                    self.cost_func(x_me[:, [k]] - self.leader_x[:, [k]], self.Q_x)
+                    for k in range(self.N + 1)
+                ]
+            )
+        elif num_vehicles_in_front == 1:  # vehicle behind leader
+            cost += sum(
+                [
+                    self.cost_func(x_f1[:, [k]] - self.leader_x[:, [k]], self.Q_x)
+                    + self.cost_func(
+                        x_me[:, [k]]
+                        - x_f1[:, [k]]
+                        - spacing_policy.spacing(x_me[:, [k]]),
+                        self.Q_x,
                     )
-        if pos_in_fleet <= 2:  # leader and its follower
-            self.ref_traj = self.mpc_model.addMVar(
-                (nx_l, N + 1), lb=0, ub=0, name="ref_traj"
+                    for k in range(self.N + 1)
+                ]
             )
-
-        # constraints and slacks for cars in back
-        if num_vehicles - pos_in_fleet >= 1:
-            self.s_back = self.mpc_model.addMVar(
-                (1, N + 1), lb=0, ub=float("inf"), name="s_back"
-            )
-            for k in range(N + 1):
-                self.mpc_model.addConstr(
-                    self.x[my_index, [k]] - self.x[b_index, [k]]
-                    >= d_safe - self.s_back[:, [k]],
-                    name=f"safety_back_{k}",
-                )
-
-            if num_vehicles - pos_in_fleet >= 2:
-                self.s_back_2 = self.mpc_model.addMVar(
-                    (1, N + 1), lb=0, ub=float("inf"), name="s_back_2"
-                )
-                # fixed state of car 2 back
-                self.x_back_2 = self.mpc_model.addMVar(
-                    (nx_l, N + 1), lb=0, ub=0, name="x_back_2"
-                )
-
-                for k in range(N + 1):
-                    self.mpc_model.addConstr(
-                        self.x[b_index, [k]] - self.x_back_2[0, [k]]
-                        >= d_safe - self.s_back_2[:, [k]],
-                        name=f"safety_back_2_{k}",
+        else:
+            cost += sum(
+                [
+                    self.cost_func(
+                        x_f1[:, [k]]
+                        - self.x_f2[:, [k]]
+                        - spacing_policy.spacing(x_f1[:, [k]]),
+                        self.Q_x,
                     )
-
-        # accel cnstrs
-        for k in range(N):
-            for i in range(u.shape[0]):
-                self.mpc_model.addConstr(
-                    self.x[2 * i + 1, [k + 1]] - self.x[2 * i + 1, [k]]
-                    <= acc.a_acc * acc.ts,
-                    name=f"acc_{i}_{k}",
-                )
-                self.mpc_model.addConstr(
-                    self.x[2 * i + 1, [k + 1]] - self.x[2 * i + 1, [k]]
-                    >= acc.a_dec * acc.ts,
-                    name=f"dec_{i}_{k}",
-                )
-
-        # set local cost
-        obj = 0
-        # front position tracking portions of cost
-        if pos_in_fleet > 1:
-            for k in range(N + 1):
-                obj += follow_bias * cost_func(
-                    (
-                        self.x[my_index : my_index + 2, [k]]
-                        - self.x[f_index : f_index + 2, [k]]
-                        - sep
-                    ),
-                    Q_x_l,
-                )
-                +w * self.s_front[:, [k]]
-            if pos_in_fleet > 2:
-                for k in range(N + 1):
-                    obj += follow_bias * (
-                        cost_func(
-                            (
-                                self.x[f_index : f_index + 2, [k]]
-                                - self.x_front_2[:, [k]]
-                                - sep
-                            ),
-                            Q_x_l,
+                    + self.cost_func(
+                        x_me[:, [k]] - x_f1[:, [k]] - spacing_policy.spacing(x_me[:, [k]]),
+                        self.Q_x,
+                    )
+                    for k in range(self.N + 1)
+                ]
+            )
+        # trcking cost for vehicles behind
+        if num_vehicles_behind > 0:
+            cost += sum(
+                [
+                    self.cost_func(
+                        x_b1[:, [k]] - x_me[:, [k]] - spacing_policy.spacing(x_b1[:, [k]]),
+                        self.Q_x,
+                    )
+                    for k in range(self.N + 1)
+                ]
+            )
+            if num_vehicles_behind > 1:
+                cost += sum(
+                    [
+                        self.cost_func(
+                            self.x_b2[:, [k]]
+                            - x_b1[:, [k]]
+                            - spacing_policy.spacing(self.x_b2[:, [k]]),
+                            self.Q_x,
                         )
-                        + w * self.s_front_2[:, k]
-                    )
-        if pos_in_fleet == 1:  # leader
-            for k in range(N + 1):
-                obj += follow_bias * cost_func(
+                        for k in range(self.N + 1)
+                    ]
+                )
+        # control effort cost
+        cost += sum(
+            [
+                self.cost_func(u_l[i][:, [k]], self.Q_u)
+                for k in range(self.N)
+                for i in range(self.n)
+            ]
+        )
+        # control variation cost
+        cost += sum(
+            [
+                self.cost_func(u_l[i][:, [k + 1]] - u_l[i][:, [k]], self.Q_du)
+                for k in range(self.N - 1)
+                for i in range(self.n)
+            ]
+        )
+        # slack variable cost
+        cost += sum(
+            [
+                self.w * self.s_f1[k]
+                + self.w * self.s_f2[k]
+                + self.w * self.s_b1[k]
+                + self.w * self.s_b2[k]
+                for k in range(self.N + 1)
+            ]
+        )
+        self.mpc_model.setObjective(cost, gp.GRB.MINIMIZE)
+
+        # accel constraints
+        self.mpc_model.addConstrs(
+            (
+                self.a_dec * self.ts <= x_l[i][1, k + 1] - x_l[i][1, k]
+                for i in range(self.n)
+                for k in range(self.N)
+            ),
+            name="dec",
+        )
+        self.mpc_model.addConstrs(
+            (
+                x_l[i][1, k + 1] - x_l[i][1, k] <= self.a_acc * self.ts
+                for i in range(self.n)
+                for k in range(self.N)
+            ),
+            name="acc",
+        )
+
+        # safe distance constraints
+        if num_vehicles_in_front > 0:
+            self.mpc_model.addConstrs(
+                (
+                    x_me[0, k] <= x_f1[0, k] - self.d_safe + self.s_f1[k]
+                    for k in range(self.N + 1)
+                ),
+                name="safe_f1",
+            )
+            if num_vehicles_in_front > 1:
+                self.mpc_model.addConstrs(
                     (
-                        self.x[my_index : my_index + 2, [k]]
-                        - self.ref_traj[:, [k]]
-                        - np.zeros((nx_l, 1))
+                        x_f1[0, k] <= self.x_f2[0, k] - self.d_safe + self.s_f2[k]
+                        for k in range(self.N + 1)
                     ),
-                    Q_x_l,
+                    name="safe_f2",
                 )
-        if pos_in_fleet == 2:  # follower of leader
-            for k in range(N + 1):
-                obj += follow_bias * cost_func(
+        if num_vehicles_behind > 0:
+            self.mpc_model.addConstrs(
+                (
+                    x_b1[0, k] <= x_me[0, k] - self.d_safe + self.s_b1[k]
+                    for k in range(self.N + 1)
+                ),
+                name="safe_b1",
+            )
+            if num_vehicles_behind > 1:
+                self.mpc_model.addConstrs(
                     (
-                        self.x[f_index : f_index + 2, [k]]
-                        - self.ref_traj[:, [k]]
-                        - np.zeros((nx_l, 1))
+                        self.x_b2[0, k] <= x_b1[0, k] - self.d_safe + self.s_b2[k]
+                        for k in range(self.N + 1)
                     ),
-                    Q_x_l,
+                    name="safe_b2",
                 )
 
-        # back position tracking
-        if num_vehicles - pos_in_fleet >= 1:
-            for k in range(N + 1):
-                obj += (
-                    cost_func(
-                        (
-                            self.x[b_index : b_index + 2, [k]]
-                            - self.x[my_index : my_index + 2, [k]]
-                            - sep
-                        ),
-                        Q_x_l,
-                    )
-                    + w * self.s_back[:, k]
-                )
-            if num_vehicles - pos_in_fleet >= 2:
-                for k in range(N + 1):
-                    obj += (
-                        cost_func(
-                            (
-                                self.x_back_2[:, [k]]
-                                - self.x[b_index : b_index + 2, [k]]
-                                - sep
-                            ),
-                            Q_x_l,
-                        )
-                        + w * self.s_back_2[:, k]
-                    )
+    def set_leader_x(self, leader_x):
+        for k in range(self.N + 1):
+            self.leader_x[:, [k]].lb = leader_x[:, [k]]
+            self.leader_x[:, [k]].ub = leader_x[:, [k]]
 
-        # control penalty in cost
-        for i in range(u.shape[0]):
-            for k in range(N):
-                obj += cost_func(u[i, [k]].reshape(1, 1), Q_u_l)
-                if k < N - 1:
-                    obj += cost_func(
-                        u[i, [k + 1]].reshape(1, 1) - u[i, [k]].reshape(1, 1), Q_du_l
-                    )
+    def set_x_f2(self, x_f2):
+        for k in range(self.N + 1):
+            self.x_f2[:, [k]].lb = x_f2[:, [k]]
+            self.x_f2[:, [k]].ub = x_f2[:, [k]]
 
-        self.mpc_model.setObjective(obj, gp.GRB.MINIMIZE)
+    def set_x_b2(self, x_b2):
+        for k in range(self.N + 1):
+            self.x_b2[:, [k]].lb = x_b2[:, [k]]
+            self.x_b2[:, [k]].ub = x_b2[:, [k]]
 
-    def set_leader_traj(self, ref_traj):
-        for k in range(N + 1):
-            self.ref_traj[:, [k]].lb = ref_traj[:, [k]]
-            self.ref_traj[:, [k]].ub = ref_traj[:, [k]]
-
-    def set_x_front_2(self, x_front_2):
-        for k in range(N + 1):
-            self.x_front_2[:, [k]].lb = x_front_2[:, [k]]
-            self.x_front_2[:, [k]].ub = x_front_2[:, [k]]
-
-    def set_x_back_2(self, x_back_2):
-        for k in range(N + 1):
-            self.x_back_2[:, [k]].lb = x_back_2[:, [k]]
-            self.x_back_2[:, [k]].ub = x_back_2[:, [k]]
-
-    def eval_cost(self, x, u):
+    def eval_cost(self, x: np.ndarray, u: np.ndarray):
         # set the bounds of the vars in the model to fix the vals
         for k in range(
-            N
+            self.N
         ):  # we dont constain the N+1th state, as it is defined by shifted control
             self.x[:, [k]].ub = x[:, [k]]
             self.x[:, [k]].lb = x[:, [k]]
-        if DISCRETE_GEARS:
+        if u.shape[0] > self.n * self.nu_l:  # discrete gears included
             self.u_g.ub = u
             self.u_g.lb = u
         else:
@@ -299,30 +305,51 @@ class LocalMpc(MpcMldCentDecup):
         # the solve method is overridden so that the bounds on the vars are set back to normal before solving.
         self.x.ub = float("inf")
         self.x.lb = -float("inf")
-        if DISCRETE_GEARS:
+        try:  # if u_g is not defined it means this mpc is not using discrete gears
             self.u_g.ub = float("inf")
             self.u_g.lb = -float("inf")
-        else:
-            self.u.ub = float("inf")
-            self.u.lb = -float("inf")
+        except:
+            pass
+        self.u.ub = float("inf")
+        self.u.lb = -float("inf")
         return super().solve_mpc(state)
 
 
 class LocalMpcGear(LocalMpc, MpcMldCentDecup, MpcGear):
     def __init__(
-        self, systems: list[dict], n: int, N: int, pos_in_fleet: int, num_vehicles: int
+        self,
+        N: int,
+        systems: list[dict],
+        num_vehicles_in_front: int,
+        num_vehicles_behind: int,
+        spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
+        quadratic_cost: bool = True,
     ) -> None:
-        MpcMldCentDecup.__init__(self, systems, n, N)
-        F = block_diag(*([systems[0]["F"]] * n))
-        G = np.vstack([systems[0]["G"]] * n)
-        self.setup_gears(N, acc, F, G)
-        self.setup_cost_and_constraints(self.u_g, pos_in_fleet, num_vehicles)
+        self.n = len(systems)
+        MpcMldCentDecup.__init__(self, systems, self.n, N)
+        F = block_diag(*([systems[i]["F"] for i in range(self.n)]))
+        G = np.vstack([systems[i]["G"] for i in range(self.n)])
+        self.setup_gears(N, F, G)
+        self.setup_cost_and_constraints(
+            self.u_g,
+            num_vehicles_in_front,
+            num_vehicles_behind,
+            spacing_policy,
+            quadratic_cost,
+        )
 
 
 class TrackingEventBasedCoordinator(MldAgent):
     def __init__(
         self,
         local_mpcs: list[LocalMpc],
+        vehicles: list[Vehicle],
+        ep_len: int,
+        N: int,
+        leader_x: np.ndarray,
+        discrete_gears: bool,
+        ts: float,
+        event_iters: int = 4,
     ) -> None:
         """Initialise the coordinator.
 
@@ -337,10 +364,19 @@ class TrackingEventBasedCoordinator(MldAgent):
         for i in range(self.n):
             self.agents.append(MldAgent(local_mpcs[i]))
 
+        self.nx_l = Vehicle.nx_l
+        self.nu_l = Vehicle.nu_l
+        self.vehicles = vehicles
+        self.num_iters = event_iters
+        self.leader_x = leader_x
+        self.ts = ts
+        self.N =  N
+        self.discrete_gears = discrete_gears
+
         # store control and state guesses
-        self.state_guesses = [np.zeros((nx_l, N + 1)) for i in range(n)]
-        self.control_guesses = [np.zeros((nu_l, N)) for i in range(n)]
-        self.gear_guesses = [np.zeros((nu_l, N)) for i in range(n)]
+        self.state_guesses = [np.zeros((self.nx_l, N + 1)) for i in range(self.n)]
+        self.control_guesses = [np.zeros((self.nu_l, N)) for i in range(self.n)]
+        self.gear_guesses = [np.zeros((self.nu_l, N)) for i in range(self.n)]
 
         self.solve_times = np.zeros((ep_len, 1))
         self.node_counts = np.zeros((ep_len, 1))
@@ -352,22 +388,22 @@ class TrackingEventBasedCoordinator(MldAgent):
         [None] * self.n
 
         temp_costs = [None] * self.n
-        for iter in range(num_iters):
+        for iter in range(self.num_iters):
             print(f"iter {iter + 1}")
             best_cost_dec = -float("inf")
             best_idx = -1  # gets set to an agent index if there is a cost improvement
             for i in range(self.n):
                 # get local initial condition and local initial guesses
                 if i == 0:
-                    x_l = state[nx_l * i : nx_l * (i + 2), :]
+                    x_l = state[self.nx_l * i : self.nx_l * (i + 2), :]
                     x_guess = np.vstack(
                         (self.state_guesses[i], self.state_guesses[i + 1])
                     )
                     u_guess = np.vstack(
                         (self.control_guesses[i], self.control_guesses[i + 1])
                     )
-                elif i == n - 1:
-                    x_l = state[nx_l * (i - 1) : nx_l * (i + 1), :]
+                elif i == self.n - 1:
+                    x_l = state[self.nx_l * (i - 1) : self.nx_l * (i + 1), :]
                     x_guess = np.vstack(
                         (self.state_guesses[i - 1], self.state_guesses[i])
                     )
@@ -375,7 +411,7 @@ class TrackingEventBasedCoordinator(MldAgent):
                         (self.control_guesses[i - 1], self.control_guesses[i])
                     )
                 else:
-                    x_l = state[nx_l * (i - 1) : nx_l * (i + 2), :]
+                    x_l = state[self.nx_l * (i - 1) : self.nx_l * (i + 2), :]
                     x_guess = np.vstack(
                         (
                             self.state_guesses[i - 1],
@@ -393,9 +429,9 @@ class TrackingEventBasedCoordinator(MldAgent):
 
                 # set the constant predictions for neighbors of neighbors
                 if i > 1:
-                    self.agents[i].mpc.set_x_front_2(self.state_guesses[i - 2])
-                if i < n - 2:
-                    self.agents[i].mpc.set_x_back_2(self.state_guesses[i + 2])
+                    self.agents[i].mpc.set_x_f2(self.state_guesses[i - 2])
+                if i < self.n - 2:
+                    self.agents[i].mpc.set_x_b2(self.state_guesses[i + 2])
 
                 temp_costs[i] = self.agents[i].mpc.eval_cost(x_guess, u_guess)
                 self.agents[i].get_control(x_l)
@@ -419,24 +455,24 @@ class TrackingEventBasedCoordinator(MldAgent):
             if best_idx >= 0:
                 best_x = self.agents[best_idx].x_pred
                 best_u = self.agents[best_idx].u_pred
-                if DISCRETE_GEARS:  # mpc has gears pred if it is gear mpc
+                if self.discrete_gears:  # mpc has gears pred if it is gear mpc
                     best_gears = self.agents[best_idx].mpc.gears_pred
                 if best_idx == 0:
                     self.state_guesses[0] = best_x[0:2, :]
                     self.state_guesses[1] = best_x[2:4, :]
                     self.control_guesses[0] = best_u[[0], :]
                     self.control_guesses[1] = best_u[[1], :]
-                    if DISCRETE_GEARS:
+                    if self.discrete_gears:
                         self.gear_guesses[0] = best_gears[[0], :]
                         self.gear_guesses[1] = best_gears[[1], :]
-                elif best_idx == n - 1:
-                    self.state_guesses[n - 2] = best_x[0:2, :]
-                    self.state_guesses[n - 1] = best_x[2:4, :]
-                    self.control_guesses[n - 2] = best_u[[0], :]
-                    self.control_guesses[n - 1] = best_u[[1], :]
-                    if DISCRETE_GEARS:
-                        self.gear_guesses[n - 2] = best_gears[[0], :]
-                        self.gear_guesses[n - 1] = best_gears[[1], :]
+                elif best_idx == self.n - 1:
+                    self.state_guesses[self.n - 2] = best_x[0:2, :]
+                    self.state_guesses[self.n - 1] = best_x[2:4, :]
+                    self.control_guesses[self.n - 2] = best_u[[0], :]
+                    self.control_guesses[self.n - 1] = best_u[[1], :]
+                    if self.discrete_gears:
+                        self.gear_guesses[self.n - 2] = best_gears[[0], :]
+                        self.gear_guesses[self.n - 1] = best_gears[[1], :]
                 else:
                     self.state_guesses[best_idx - 1] = best_x[0:2, :]
                     self.state_guesses[best_idx] = best_x[2:4, :]
@@ -444,7 +480,7 @@ class TrackingEventBasedCoordinator(MldAgent):
                     self.control_guesses[best_idx - 1] = best_u[[0], :]
                     self.control_guesses[best_idx] = best_u[[1], :]
                     self.control_guesses[best_idx + 1] = best_u[[2], :]
-                    if DISCRETE_GEARS:
+                    if self.discrete_gears:
                         self.gear_guesses[best_idx - 1] = best_gears[[0], :]
                         self.gear_guesses[best_idx] = best_gears[[1], :]
                         self.gear_guesses[best_idx + 1] = best_gears[[2], :]
@@ -455,41 +491,52 @@ class TrackingEventBasedCoordinator(MldAgent):
         # debugging
         if DEBUG:
             cost_inc = 0
-            for i in range(n):
+            for i in range(self.n):
                 local_x = self.state_guesses[i]
                 local_u = self.control_guesses[i]
-                for k in range(N):
+                for k in range(self.N):
                     if i == 0:
-                        front = self.agents[0].mpc.ref_traj.X
+                        front = self.agents[0].mpc.leader_x.X
                         sep_temp = np.zeros((2, 1))
                     else:
                         front = self.state_guesses[i - 1]
-                        sep_temp = sep
-                    cost_inc += (local_x[:, k] - front[:, k] - sep_temp.T) @ Q_x_l @ (
+                        raise NotImplementedError()
+                        sep_temp = 0
+                    cost_inc += (
+                        local_x[:, k] - front[:, k] - sep_temp.T
+                    ) @ self.Q_x @ (
                         local_x[:, [k]] - front[:, [k]] - sep_temp
-                    ) + local_u[:, k] @ Q_u_l @ local_u[:, [k]]
+                    ) + local_u[
+                        :, k
+                    ] @ self.Q_u @ local_u[
+                        :, [k]
+                    ]
                 cost_inc += (
-                    (local_x[:, N] - front[:, N] - sep_temp.T)
-                    @ Q_x_l
-                    @ (local_x[:, [N]] - front[:, [N]] - sep_temp)
+                    (local_x[:, self.N] - front[:, self.N] - sep_temp.T)
+                    @ self.Q_x
+                    @ (local_x[:, [self.N]] - front[:, [self.N]] - sep_temp)
                 )
 
-        if DISCRETE_GEARS:
+        if self.discrete_gears:
             return np.vstack(
                 (
-                    np.vstack([self.control_guesses[i][:, [0]] for i in range(n)]),
-                    np.vstack([self.gear_guesses[i][:, [0]] for i in range(n)]),
+                    np.vstack([self.control_guesses[i][:, [0]] for i in range(self.n)]),
+                    np.vstack([self.gear_guesses[i][:, [0]] for i in range(self.n)]),
                 )
             )
         else:
-            return np.vstack([self.control_guesses[i][:, [0]] for i in range(n)])
+            return np.vstack([self.control_guesses[i][:, [0]] for i in range(self.n)])
 
     def on_timestep_end(self, env: Env, episode: int, timestep: int) -> None:
-        self.agents[0].mpc.set_leader_traj(leader_state[:, timestep : timestep + N + 1])
-        self.agents[1].mpc.set_leader_traj(leader_state[:, timestep : timestep + N + 1])
+        self.agents[0].mpc.set_leader_x(
+            self.leader_x[:, timestep : timestep + self.N + 1]
+        )
+        self.agents[1].mpc.set_leader_x(
+            self.leader_x[:, timestep : timestep + self.N + 1]
+        )
 
         # shift previous solutions to be initial guesses at next step
-        for i in range(n):
+        for i in range(self.n):
             self.state_guesses[i] = np.concatenate(
                 (self.state_guesses[i][:, 1:], self.state_guesses[i][:, -1:]),
                 axis=1,
@@ -498,7 +545,7 @@ class TrackingEventBasedCoordinator(MldAgent):
                 (self.control_guesses[i][:, 1:], self.control_guesses[i][:, -1:]),
                 axis=1,
             )
-            if DISCRETE_GEARS:
+            if self.discrete_gears:
                 self.gear_guesses[i] = np.concatenate(
                     (self.gear_guesses[i][:, 1:], self.gear_guesses[i][:, -1:]),
                     axis=1,
@@ -512,110 +559,142 @@ class TrackingEventBasedCoordinator(MldAgent):
         return super().on_timestep_end(env, episode, timestep)
 
     def on_episode_start(self, env: Env, episode: int, state) -> None:
-        self.agents[0].mpc.set_leader_traj(leader_state[:, 0 : N + 1])
-        self.agents[1].mpc.set_leader_traj(leader_state[:, 0 : N + 1])
+        self.agents[0].mpc.set_leader_x(self.leader_x[:, 0 : self.N + 1])
+        self.agents[1].mpc.set_leader_x(self.leader_x[:, 0 : self.N + 1])
 
         # initialise first step guesses with extrapolating positions
         for i in range(self.n):
             xl = env.x[
-                nx_l * i : nx_l * (i + 1), :
+                self.nx_l * i : self.nx_l * (i + 1), :
             ]  # initial local state for vehicle i
             self.state_guesses[i] = self.extrapolate_position(xl[0, :], xl[1, :])
-            self.control_guesses[i] = acc.get_u_for_constant_vel(xl[1, :]) * np.ones(
-                (nu_l, N)
-            )
-            if DISCRETE_GEARS:
-                # for a gear guess we use twa mapping from speed to gear
-                self.gear_guesses[i] = acc.get_pwa_gear_from_speed(xl[1, :]) * np.ones(
-                    (nu_l, N)
+            if not self.discrete_gears:
+                self.control_guesses[i] = self.vehicles[i].get_u_for_constant_vel(
+                    xl[1, 0]
+                ) * np.ones((self.nu_l, self.N))
+            else:
+                j = self.vehicles[i].get_gear_from_velocity(xl[1, 0])
+                self.gear_guesses[i] = j * np.ones(
+                    (self.nu_l, self.N)
                 )
+                self.control_guesses[i] = self.vehicles[i].get_u_for_constant_vel(
+                    xl[1, 0], j
+                ) * np.ones((self.nu_l, self.N))
 
         return super().on_episode_start(env, episode, state)
 
     def extrapolate_position(self, initial_pos, initial_vel):
-        x_pred = np.zeros((nx_l, N + 1))
+        x_pred = np.zeros((self.nx_l, self.N + 1))
         x_pred[0, [0]] = initial_pos
         x_pred[1, [0]] = initial_vel
-        for k in range(N):
-            x_pred[0, [k + 1]] = x_pred[0, [k]] + acc.ts * x_pred[1, [k]]
+        for k in range(self.N):
+            x_pred[0, [k + 1]] = x_pred[0, [k]] + self.ts * x_pred[1, [k]]
             x_pred[1, [k + 1]] = x_pred[1, [k]]
         return x_pred
 
 
-# env
-env = MonitorEpisodes(
-    TimeLimit(
-        CarFleet(
-            acc,
-            n,
-            ep_len,
-            L2_norm_cost=COST_2_NORM,
-            homogenous=HOMOGENOUS,
-            random_ICs=random_ICs,
-        ),
-        max_episode_steps=ep_len,
-    )
-)
+def simulate(sim: Sim, event_iters: int, save: bool = False, plot: bool = True):
+    n = sim.n  # num cars
+    N = sim.N  # controller horizon
+    ep_len = sim.ep_len  # length of episode (sim len)
+    ts = Params.ts
+    masses = sim.masses
 
+    spacing_policy = sim.spacing_policy
+    leader_trajectory = sim.leader_trajectory
+    leader_x = leader_trajectory.get_leader_trajectory()
+    # vehicles
+    platoon = Platoon(n, vehicle_type=sim.vehicle_model_type, masses=masses)
+    systems = platoon.get_vehicle_system_dicts(ts)
 
-if DISCRETE_GEARS:
-    mpc_class = LocalMpcGear
-    if HOMOGENOUS:  # by not passing the index all systems are the same
-        systems = [acc.get_friction_pwa_system() for i in range(n)]
-    else:
-        systems = [acc.get_friction_pwa_system(i) for i in range(n)]
-else:
-    mpc_class = LocalMpc
-    if HOMOGENOUS:  # by not passing the index all systems are the same
-        systems = [acc.get_pwa_system() for i in range(n)]
-    else:
-        systems = [acc.get_pwa_system(i) for i in range(n)]
-
-# coordinator
-local_mpcs: list[LocalMpc] = []
-for i in range(n):
-    # create mpcs
-    if i == 0:
-        local_mpcs.append(mpc_class([systems[0], systems[1]], 2, N, i + 1, n))
-    elif i == n - 1:
-        local_mpcs.append(mpc_class([systems[n - 2], systems[n - 1]], 2, N, i + 1, n))
-    else:
-        local_mpcs.append(
-            mpc_class([systems[i - 1], systems[i], systems[i + 1]], 3, N, i + 1, n)
+    # env
+    env = MonitorEpisodes(
+        TimeLimit(
+            PlatoonEnv(
+                n=n,
+                platoon=platoon,
+                leader_trajectory=leader_trajectory,
+                spacing_policy=spacing_policy,
+                start_from_platoon=sim.start_from_platoon,
+            ),
+            max_episode_steps=ep_len,
         )
+    )
 
-agent = TrackingEventBasedCoordinator(local_mpcs)
+    # mpcs
+    if sim.vehicle_model_type == "pwa_gear":
+        mpcs = [
+            LocalMpc(
+                N,
+                pwa_systems=systems[:2] if i == 0 else (systems[-2:] if i == n-1 else systems[i-1:i+2]),
+                num_vehicles_in_front=i if i < 2 else 2,
+                num_vehicles_behind=(n - 1) - i if i > n - 3 else 2,
+                spacing_policy=spacing_policy,
+            )
+            for i in range(n)
+        ]
+        discrete_gears = False
+    elif sim.vehicle_model_type == "pwa_friction":
+        mpcs = [
+            LocalMpcGear(
+                N,
+                systems=systems[:2] if i == 0 else (systems[-2:] if i == n-1 else systems[i-1:i+2]),
+                num_vehicles_in_front=i if i < 2 else 2,
+                num_vehicles_behind=(n - 1) - i if i > n - 3 else 2,
+                spacing_policy=spacing_policy,
+            )
+            for i in range(n)
+        ]
+        discrete_gears = True
+    elif sim.vehicle_model_type == "nonlinear":
+        discrete_gears = True
+        raise NotImplementedError()
+    else:
+        raise ValueError(f"{sim.vehicle_model_type} is not a valid vehicle model type.")
 
-agent.evaluate(env=env, episodes=1, seed=1)
+    # agent
+    agent = TrackingEventBasedCoordinator(
+        mpcs,
+        vehicles=platoon.get_vehicles(),
+        ep_len=ep_len,
+        N=N,
+        leader_x=leader_x,
+        discrete_gears=discrete_gears,
+        ts=ts,
+        event_iters=event_iters,
+    )
 
-if len(env.observations) > 0:
-    X = env.observations[0].squeeze()
-    U = env.actions[0].squeeze()
-    R = env.rewards[0]
-else:
-    X = np.squeeze(env.ep_observations)
-    U = np.squeeze(env.ep_actions)
-    R = np.squeeze(env.ep_rewards)
+    agent.evaluate(env=env, episodes=1, seed=1)
 
-print(f"Return = {sum(R.squeeze())}")
-print(f"Violations = {env.unwrapped.viol_counter}")
-print(f"Run_times_sum: {sum(agent.solve_times)}")
-print(f"Mem: {max(agent.node_counts)}")
+    if len(env.observations) > 0:
+        X = env.observations[0].squeeze()
+        U = env.actions[0].squeeze()
+        R = env.rewards[0]
+    else:
+        X = np.squeeze(env.ep_observations)
+        U = np.squeeze(env.ep_actions)
+        R = np.squeeze(env.ep_rewards)
 
-if PLOT:
-    plot_fleet(n, X, U, R, leader_state, violations=env.unwrapped.viol_counter[0])
+    print(f"Return = {sum(R.squeeze())}")
+    print(f"Violations = {env.unwrapped.viol_counter}")
+    print(f"Run_times_sum: {sum(agent.solve_times)}")
 
-if SAVE:
-    with open(
-        f"event{num_iters}_n_{n}_N_{N}_Q_{COST_2_NORM}_DG_{DISCRETE_GEARS}_HOM_{HOMOGENOUS}_LT_{LEADER_TRAJ}"
-        # + datetime.datetime.now().strftime("%d%H%M%S%f")
-        + ".pkl",
-        "wb",
-    ) as file:
-        pickle.dump(X, file)
-        pickle.dump(U, file)
-        pickle.dump(R, file)
-        pickle.dump(agent.solve_times, file)
-        pickle.dump(agent.node_counts, file)
-        pickle.dump(env.unwrapped.viol_counter[0], file)
-        pickle.dump(leader_state, file)
+    if plot:
+        plot_fleet(n, X, U, R, leader_x, violations=env.unwrapped.viol_counter[0])
+
+    if save:
+        with open(
+            f"event_{event_iters}_{sim.id}" + ".pkl",
+            "wb",
+        ) as file:
+            pickle.dump(X, file)
+            pickle.dump(U, file)
+            pickle.dump(R, file)
+            pickle.dump(agent.solve_times, file)
+            pickle.dump(agent.node_counts, file)
+            pickle.dump(env.unwrapped.viol_counter[0], file)
+            pickle.dump(leader_x, file)
+
+
+if __name__ == "__main__":
+    simulate(Sim(), event_iters=4)

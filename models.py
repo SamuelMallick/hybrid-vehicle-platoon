@@ -191,6 +191,9 @@ class Platoon:
             for i in range(n):
                 self.vehicles.append(vehicle_class())
 
+    def get_vehicles(self):
+        return self.vehicles
+
     def step_platoon(self, x: np.ndarray, u: np.ndarray, j: np.ndarray, ts: float):
         """Steps the platoon with non-linear model by ts seconds. x is state, u is control, j is gears."""
         if (
@@ -280,6 +283,42 @@ class PwaFrictionVehicle(Vehicle):
             "F": F,
             "G": G,
         }
+    
+    def get_gear_from_velocity(self, v: float):
+        """Get a gear j that is valid for the velocity v."""
+        if v < self.v_min or v > self.v_max:
+            raise ValueError(f'Velocity {v} is not within bounds {self.v_min}/{self.v_max}')
+        for i in range(len(self.b)):
+            if v > self.vl[i] and v < self.vh[i]:   # return first valid gear found
+                return i + 1
+        raise ValueError(f'No gear found for velocity {v}')
+    
+    def get_u_for_constant_vel(self, v: float, j: int):
+        """Get the control input which will keep the velocity v constant with gear j, as by the PWA dynamics."""
+        x = np.array([[0], [v]])  # first state does not matter for this pwa sys
+        u = np.array([[0]])  # neither does control
+
+        if j < 1 or j > 6:  
+            raise ValueError(f'{j} is not a valid gear.')
+        j = j - 1
+        if v < self.vl[j] or v > self.vh[j]:
+            raise ValueError(f'Velocity {v} is not valid for gear {j+1}')
+
+        for i in range(len(self.system["S"])):
+            if all(
+                self.system["S"][i] @ x + self.system["R"][i] @ u
+                <= self.system["T"][i]
+                + np.array(
+                    [[0], [1e-4]]
+                )  # buffer is to have one of the as a strict inequality
+            ):
+                # This is VERY specific to this system, DO NOT reuse this code on other PWA systems.
+                # we are setting the \dot{v} = 0, and solving for the input - using cont time model
+                return (1 / (self.b[j]*self.system["B"][i][1, 0])) * (
+                    -self.system["A"][i][1, 1] * v - self.system["c"][i][1, 0]
+                )
+
+        raise RuntimeError("Didn't find any PWA region for the given speed!")
 
     def get_discrete_system(self, ts: float):
         """Return PWA dictionary for discrete dynamics with time step ts."""
@@ -402,7 +441,7 @@ class PwaGearVehicle(PwaFrictionVehicle):
         raise RuntimeError(f"Didn't find any gear for the given speed {v}")
 
     def step_pwa(self, x: np.ndarray, u: np.ndarray, ts: float):
-        """Steps the local pwa dynamics for a time step of ts seconds."""
+        """Steps the local PWA dynamics for a time step of ts seconds."""
         for j in range(len(self.system["S"])):
             if all(
                 self.system["S"][j] @ x + self.system["R"][j] @ u
@@ -435,11 +474,12 @@ class PwaGearVehicle(PwaFrictionVehicle):
                 )  # buffer is to have one of the as a strict inequality
             ):
                 # This is VERY specific to this system, DO NOT reuse this code on other PWA systems.
+                # we are setting the \dot{v} = 0, and solving for the input - using cont time model
                 return (1 / self.system["B"][j][1, 0]) * (
-                    v - self.system["A"][j][1, 1] * v - self.system["c"][j][1, 0]
+                    -self.system["A"][j][1, 1] * v - self.system["c"][j][1, 0]
                 )
 
-        raise RuntimeError("Didn't find any PWa region for the given speed!")
+        raise RuntimeError("Didn't find any PWA region for the given speed!")
 
 
 if __name__ == "__main__":

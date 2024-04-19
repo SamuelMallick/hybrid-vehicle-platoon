@@ -2,8 +2,14 @@ from typing import Literal
 
 import numpy as np
 
-from misc.leader_trajectory import StopAndGoLeaderTrajectory
-from misc.spacing_policy import ConstantTimePolicy
+from misc.leader_trajectory import (
+    ConstantVelocityLeaderTrajectory,
+    StopAndGoLeaderTrajectory,
+)
+from misc.spacing_policy import ConstantSpacingPolicy, ConstantTimePolicy
+
+np.random.seed(2)
+random_masses = np.random.uniform(700, 900, 100).tolist()
 
 
 class Params:
@@ -18,23 +24,52 @@ class Params:
 
 
 class Sim:
-    vehicle_model_type: Literal["nonlinear", "pwa_friction", "pwa_gear"] = "pwa_gear"
-    start_from_platoon: bool = True
+    vehicle_model_type: Literal["nonlinear", "pwa_friction", "pwa_gear"] = "pwa_friction"
+    start_from_platoon: bool = False
     quadratic_cost: bool = True
-    n = 4
-    N = 5
-    ep_len = 200
-    # spacing_policy = ConstantSpacingPolicy(50)
-    # leader_trajectory = ConstantVelocityLeaderTrajectory(
-    #     p=3000, v=20, trajectory_len=ep_len + 50, ts=ts
-    # )
-    spacing_policy = ConstantTimePolicy(10, 3)
-    leader_trajectory = StopAndGoLeaderTrajectory(
-        p=3000,
-        vh=30,
-        vl=10,
-        v_change_steps=[10, 50],
-        trajectory_len=ep_len + 50,
-        ts=Params.ts,
+    n = 5
+    N = 4
+    ep_len = 100
+    spacing_policy = ConstantSpacingPolicy(50)
+    leader_trajectory = ConstantVelocityLeaderTrajectory(
+        p=3000, v=20, trajectory_len=ep_len + 50, ts=Params.ts
     )
+    # spacing_policy = ConstantTimePolicy(10, 3)
+    # leader_trajectory = StopAndGoLeaderTrajectory(
+    #     p=3000,
+    #     vh=30,
+    #     vl=10,
+    #     v_change_steps=[40, 60],
+    #     trajectory_len=ep_len + 50,
+    #     ts=Params.ts,
+    # )
+    masses = None
     id = "default"
+
+
+class Sim_n_task_1(Sim):
+    def __init__(self, n: int) -> None:
+        super().__init__()
+        self.n = n
+        self.id = f"n_task_1_{n}"
+        self.spacing_policy = ConstantSpacingPolicy(50)
+        self.leader_trajectory = ConstantVelocityLeaderTrajectory(
+            p=3000, v=20, trajectory_len=self.ep_len + 50, ts=Params.ts
+        )
+
+
+class Sim_n_task_2(Sim):
+    def __init__(self, n: int) -> None:
+        super().__init__()
+        self.n = n
+        self.id = f"n_task_2_{n}"
+        self.spacing_policy = ConstantTimePolicy(10, 3)
+        self.leader_trajectory = StopAndGoLeaderTrajectory(
+            p=3000,
+            vh=30,
+            vl=10,
+            v_change_steps=[40, 60],
+            trajectory_len=self.ep_len + 50,
+            ts=Params.ts,
+        )
+        self.masses = random_masses[:n]
