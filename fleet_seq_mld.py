@@ -344,7 +344,7 @@ def simulate(sim: Sim, save: bool = False, plot: bool = True, seed: int = 1):
 
     if save:
         with open(
-            f"seq_{sim.id}" + ".pkl",
+            f"seq_{sim.id}_seed_{seed}" + ".pkl",
             "wb",
         ) as file:
             pickle.dump(X, file)

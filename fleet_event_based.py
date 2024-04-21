@@ -698,7 +698,7 @@ def simulate(
 
     if save:
         with open(
-            f"event_{event_iters}_{sim.id}" + ".pkl",
+            f"event_{event_iters}_{sim.id}_seed_{seed}" + ".pkl",
             "wb",
         ) as file:
             pickle.dump(X, file)

@@ -595,7 +595,7 @@ def simulate(
 
     if save:
         with open(
-            f"admm_{admm_iters}_{sim.id}" + ".pkl",
+            f"admm_{admm_iters}_{sim.id}_seed_{seed}" + ".pkl",
             "wb",
         ) as file:
             pickle.dump(X, file)
