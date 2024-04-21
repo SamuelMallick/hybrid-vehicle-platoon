@@ -280,7 +280,7 @@ class TrackingDecentMldCoordinator(MldAgent):
         return x_pred
 
 
-def simulate(sim: Sim, save: bool = False, plot: bool = True):
+def simulate(sim: Sim, save: bool = False, plot: bool = True, seed: int = 2):
     n = sim.n  # num cars
     N = sim.N  # controller horizon
     ep_len = sim.ep_len  # length of episode (sim len)
@@ -365,4 +365,4 @@ def simulate(sim: Sim, save: bool = False, plot: bool = True):
 
 
 if __name__ == "__main__":
-    simulate(Sim(), save=False)
+    simulate(Sim(), save=False, seed=2)

@@ -13,19 +13,29 @@ types = [
     "cent",
     "decent",
     "seq",
+    "event_4",
+    "event_6",
+    "event_10",
+    "admm_20",
+    "admm_50",
 ]
 leg = [
     "decent",
     "seq",
+    "event_4",
+    "event_6",
+    "event_10",
+    "admm_20",
+    "admm_50",
 ]
-num_event_vars = 0
-num_admm_vars = 0
+num_event_vars = 3
+num_admm_vars = 2
 
 LT = 1
 HOM = True
 DG = False
 Q = True
-n_sw = [i for i in range(2, 7)]
+n_sw = [i for i in range(2, 9)]
 N = 5
 
 track_costs = []
@@ -44,7 +54,7 @@ for type in types:
     viols.append([])
     for n in n_sw:
         with open(
-            f"data/task_2/{type}_n_task_2_{n}.pkl",
+            f"data/task_1/{type}_n_task_1_{n}.pkl",
             "rb",
         ) as file:
             X = pickle.load(file)
@@ -74,7 +84,7 @@ perf_drop = []
 for i in range(1, counter):
     perf_drop.append(
         [
-            100 * (track_costs[i][j] - track_costs[0][j]) / track_costs[0][j]
+            100 * (track_costs[i][j] - track_costs[0][j]) / track_costs[i][j]
             for j in range(len(track_costs[0]))
         ]
     )
@@ -87,7 +97,7 @@ error_upper = [
 ]
 
 # plot perf drop
-y_lim = 50
+y_lim = 100
 _, axs = plt.subplots(
     6,
     1,
@@ -110,7 +120,7 @@ for i in range(counter - 1):
         markerfacecolor="none",
     )
 axs[1].set_ylabel(r"$\%J$")
-axs[1].set_ylim(-25, y_lim)
+# axs[1].set_ylim(-25, y_lim)
 
 y_lim = 0.3
 for i in range(1, 3):
@@ -126,7 +136,7 @@ for i in range(1, 3):
         markerfacecolor="none",
     )
     [bar.set_alpha(0.7) for bar in bars]
-axs[2].set_ylim(-0.1, y_lim)
+# axs[2].set_ylim(-0.1, y_lim)
 axs[2].set_ylabel("$t_{COMP}$")
 y_lim = 6
 for i in range(3, 3 + num_event_vars):
@@ -142,7 +152,7 @@ for i in range(3, 3 + num_event_vars):
         markerfacecolor="none",
     )
     [bar.set_alpha(0.7) for bar in bars]
-axs[3].set_ylim(-0.1, y_lim)
+# axs[3].set_ylim(-0.1, y_lim)
 axs[3].set_ylabel("$t_{COMP}$")
 y_lim = 3.5
 for i in range(3 + num_event_vars, 3 + num_event_vars + num_admm_vars):
@@ -159,7 +169,7 @@ for i in range(3 + num_event_vars, 3 + num_event_vars + num_admm_vars):
     )
     [bar.set_alpha(0.7) for bar in bars]
 axs[4].set_ylabel("$t_{COMP}$")
-axs[4].set_ylim(-0.1, y_lim)
+# axs[4].set_ylim(-0.1, y_lim)
 for i in range(1, counter):
     axs[5].plot(
         n_sw, nodes[i], mf[i], linewidth=lw, markersize=ms, markerfacecolor="none"
@@ -180,7 +190,7 @@ for i in range(2):
         color=f"C{i}",
         markerfacecolor="none",
     )
-axs[0].set_ylim(-25, y_lim)
+# axs[0].set_ylim(-25, y_lim)
 for i in range(2, 2 + num_event_vars):
     axs[1].plot(
         n_sw,
@@ -191,7 +201,7 @@ for i in range(2, 2 + num_event_vars):
         color=f"C{i}",
         markerfacecolor="none",
     )
-axs[1].set_ylim(-25, y_lim)
+# axs[1].set_ylim(-25, y_lim)
 for i in range(2 + num_event_vars, 2 + num_event_vars + num_admm_vars):
     axs[2].plot(
         n_sw,
@@ -203,7 +213,7 @@ for i in range(2 + num_event_vars, 2 + num_event_vars + num_admm_vars):
         markerfacecolor="none",
     )
 axs[2].set_xlabel("$n$")
-axs[2].set_ylim(-25, y_lim)
+# axs[2].set_ylim(-25, y_lim)
 # save2tikz(plt.gcf())
 
 # plot times

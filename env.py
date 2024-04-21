@@ -68,7 +68,7 @@ class PlatoonEnv(gym.Env[npt.NDArray[np.floating], npt.NDArray[np.floating]]):
         self.leader_x = self.leader_trajectory.get_leader_trajectory()
         self.x = np.tile(np.array([[0], [0]]), (self.n, 1))
 
-        np.random.seed(2)
+        np.random.seed(seed)
         # create once 100 random starting states
         starting_velocities = [30] + [
             20 * np.random.random() + 5 for i in range(100)

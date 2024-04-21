@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from dmpcpwa.agents.mld_agent import MldAgent
 from dmpcpwa.mpc.mpc_mld import MpcMld
-from dmpcrl.core.admm import g_map
 from gymnasium import Env
 from gymnasium.wrappers import TimeLimit
 from mpcrl.wrappers.envs import MonitorEpisodes
@@ -330,6 +329,7 @@ class ADMMCoordinator(MldAgent):
                     self.agents[i].mpc.set_back_vars(self.y_back_list[i], x_pred_behind)
 
         for t in range(self.admm_iters):
+            # print(f'admm iter {t}')
             # admm x-update
             for i in range(self.n):
                 xl = state[
@@ -514,7 +514,9 @@ class ADMMCoordinator(MldAgent):
         return super().on_episode_start(env, episode, state)
 
 
-def simulate(sim: Sim, admm_iters: int = 20, save: bool = False, plot: bool = True):
+def simulate(
+    sim: Sim, admm_iters: int = 20, save: bool = False, plot: bool = True, seed: int = 1
+):
     n = sim.n  # num cars
     N = sim.N  # controller horizon
     ep_len = sim.ep_len  # length of episode (sim len)
@@ -564,7 +566,13 @@ def simulate(sim: Sim, admm_iters: int = 20, save: bool = False, plot: bool = Tr
     ]
     # agent
     agent = ADMMCoordinator(
-        mpcs, admm_iters=admm_iters, rho=0.5, ep_len=ep_len, N=N, leader_x=leader_x, ts=ts
+        mpcs,
+        admm_iters=admm_iters,
+        rho=0.5,
+        ep_len=ep_len,
+        N=N,
+        leader_x=leader_x,
+        ts=ts,
     )
 
     agent.evaluate(env=env, episodes=1, seed=1)
@@ -600,4 +608,4 @@ def simulate(sim: Sim, admm_iters: int = 20, save: bool = False, plot: bool = Tr
 
 
 if __name__ == "__main__":
-    simulate(Sim())
+    simulate(Sim(), 50, save=False, seed=2)

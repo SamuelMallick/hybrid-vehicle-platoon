@@ -597,7 +597,9 @@ class TrackingEventBasedCoordinator(MldAgent):
         return x_pred
 
 
-def simulate(sim: Sim, event_iters: int, save: bool = False, plot: bool = True):
+def simulate(
+    sim: Sim, event_iters: int, save: bool = False, plot: bool = True, seed: int = 2
+):
     n = sim.n  # num cars
     N = sim.N  # controller horizon
     ep_len = sim.ep_len  # length of episode (sim len)
@@ -709,4 +711,4 @@ def simulate(sim: Sim, event_iters: int, save: bool = False, plot: bool = True):
 
 
 if __name__ == "__main__":
-    simulate(Sim(), event_iters=4)
+    simulate(Sim(), event_iters=4, seed=2)

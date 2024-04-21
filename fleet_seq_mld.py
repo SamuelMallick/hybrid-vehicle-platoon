@@ -272,7 +272,7 @@ class TrackingSequentialMldCoordinator(MldAgent):
         return super().on_episode_start(env, episode, state)
 
 
-def simulate(sim: Sim, save: bool = False, plot: bool = True):
+def simulate(sim: Sim, save: bool = False, plot: bool = True, seed: int = 1):
     n = sim.n  # num cars
     N = sim.N  # controller horizon
     ep_len = sim.ep_len  # length of episode (sim len)
@@ -357,4 +357,4 @@ def simulate(sim: Sim, save: bool = False, plot: bool = True):
 
 
 if __name__ == "__main__":
-    simulate(Sim())
+    simulate(Sim(), seed=2)
