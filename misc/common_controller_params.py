@@ -28,7 +28,7 @@ class Sim:
     start_from_platoon: bool = False
     quadratic_cost: bool = True
     n = 3
-    N = 5
+    N = 10
     ep_len = 100
     spacing_policy = ConstantSpacingPolicy(50)
     leader_trajectory = ConstantVelocityLeaderTrajectory(
@@ -51,7 +51,7 @@ class Sim_n_task_1(Sim):
     def __init__(self, n: int) -> None:
         super().__init__()
         self.n = n
-        self.id = f"n_task_1_{n}"
+        self.id = f"task_1_n_{n}"
         self.spacing_policy = ConstantSpacingPolicy(50)
         self.leader_trajectory = ConstantVelocityLeaderTrajectory(
             p=3000, v=20, trajectory_len=self.ep_len + 50, ts=Params.ts
@@ -62,7 +62,7 @@ class Sim_n_task_2(Sim):
     def __init__(self, n: int) -> None:
         super().__init__()
         self.n = n
-        self.id = f"n_task_2_{n}"
+        self.id = f"task_2_n_{n}"
         self.spacing_policy = ConstantTimePolicy(10, 3)
         self.leader_trajectory = StopAndGoLeaderTrajectory(
             p=3000,
