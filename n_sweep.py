@@ -5,10 +5,10 @@ from fleet_naive_admm import simulate as sim_admm
 from fleet_seq_mld import simulate as sim_seq
 from misc.common_controller_params import Sim_n_task_2, Sim_n_task_1
 
-task_1 = True
+task_1 = False
 
 for n in range(2, 10):
-    for seed in range(1, 3):
+    for seed in range(3):
         if task_1:
             sim = Sim_n_task_1(n)
         else:
