@@ -575,7 +575,7 @@ def simulate(
         ts=ts,
     )
 
-    agent.evaluate(env=env, episodes=1, seed=1)
+    agent.evaluate(env=env, episodes=1, seed=seed)
 
     if len(env.observations) > 0:
         X = env.observations[0].squeeze()

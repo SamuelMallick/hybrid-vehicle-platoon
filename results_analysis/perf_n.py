@@ -20,7 +20,7 @@ types = [
     "admm_20",
     "admm_50",
 ]
-seeds = [1, 2]
+seeds = [0, 1, 2]
 leg = [
     "decent",
     "seq",
@@ -32,13 +32,13 @@ leg = [
     "admm_50",
 ]
 num_event_vars = 3
-num_admm_vars = 2
+num_admm_vars = 3
 
 LT = 1
 HOM = True
 DG = False
 Q = True
-n_sw = [i for i in range(2, 3)]
+n_sw = [i for i in range(2, 4)]
 N = 5
 
 track_costs = []
@@ -64,7 +64,7 @@ for type in types:
         viols[counter].append(0)
         for seed in seeds:
             with open(
-                f"data/{type}_task_1_n_{n}_seed_{seed}.pkl",
+                f"data/{type}_task_2_n_{n}_seed_{seed}.pkl",
                 "rb",
             ) as file:
                 X = pickle.load(file)
@@ -81,13 +81,19 @@ for type in types:
             time_av[counter][-1] += sum(solve_times)[0] / len(solve_times)
             nodes[counter][-1] += max(node_counts)
             viols[counter][-1] += sum(violations) / 100
+        track_costs[counter][-1] /= 3
+        time_min[counter][-1] /= 3
+        time_max[counter][-1] /= 3
+        time_av[counter][-1] /= 3
+        nodes[counter][-1] /= 3
+        viols[counter][-1] /= 3
     counter += 1
 
 
 # plotting params for all figs
 lw = 1.5  # line width
 ms = 5  # marker size
-mf = ["-x", "-o", "-o", ":v", ":v", ":v", "--s", "--s"]  # marker format
+mf = ["-x", "-o", "-o", ":v", ":v", ":v", "--s", "--s", "--s"]  # marker format
 
 # tracking cost as percentrage performance drop from centralized
 perf_drop = []

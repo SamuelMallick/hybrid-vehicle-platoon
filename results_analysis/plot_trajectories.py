@@ -11,15 +11,12 @@ plt.style.use("bmh")
 
 nx_l = 2
 plot_len = 100
-name = "admm_50"
-DG = False
-Q = True
-HOM = True
-n = 5
-N = 5
-LT = 1
+name = "decent"
+n = 4
+seed = 2
+
 with open(
-    f"data/task_2/{name}_n_task_2_{n}.pkl",
+    f"data/{name}_task_1_n_{n}_seed_{seed}.pkl",
     "rb",
 ) as file:
     X = pickle.load(file)
