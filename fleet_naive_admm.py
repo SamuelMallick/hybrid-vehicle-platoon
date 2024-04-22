@@ -608,4 +608,4 @@ def simulate(
 
 
 if __name__ == "__main__":
-    simulate(Sim(), 50, save=False, seed=2)
+    simulate(Sim(), 50, save=False, seed=1)
