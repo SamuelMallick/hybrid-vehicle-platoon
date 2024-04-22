@@ -44,19 +44,26 @@ class LocalMpc(MpcMldCentDecup):
         num_vehicles_behind: int,
         spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
         quadratic_cost: bool = True,
-        thread_limit: int | None = None
+        thread_limit: int | None = None,
+        accel_cnstr_tightening: float = 0.0,
     ) -> None:
         """Initialize the local MPC. This MPC optimizes also considering neighboring vehicles.
         The number of neighboring vehicles is passed in through num_vehicles_in_front/num_vehicles_behind.
         """
         self.n = len(pwa_systems)
-        super().__init__(pwa_systems, self.n, N, thread_limit=thread_limit)
+        super().__init__(
+            pwa_systems,
+            self.n,
+            N,
+            thread_limit=thread_limit,
+        )
         self.setup_cost_and_constraints(
             self.u,
             num_vehicles_in_front,
             num_vehicles_behind,
             spacing_policy,
             quadratic_cost,
+            accel_cnstr_tightening,
         )
 
     def setup_cost_and_constraints(
@@ -66,6 +73,7 @@ class LocalMpc(MpcMldCentDecup):
         num_vehicles_behind: int,
         spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
         quadratic_cost: bool = True,
+        accel_cnstr_tightening: float = 0.0,
     ):
         """Set up  cost and constraints for vehicle. Penalises the u passed in."""
         if quadratic_cost:
@@ -223,7 +231,8 @@ class LocalMpc(MpcMldCentDecup):
         # accel constraints
         self.mpc_model.addConstrs(
             (
-                self.a_dec * self.ts <= x_l[i][1, k + 1] - x_l[i][1, k]
+                self.a_dec * self.ts
+                <= x_l[i][1, k + 1] - x_l[i][1, k] - k * accel_cnstr_tightening
                 for i in range(self.n)
                 for k in range(self.N)
             ),
@@ -231,7 +240,8 @@ class LocalMpc(MpcMldCentDecup):
         )
         self.mpc_model.addConstrs(
             (
-                x_l[i][1, k + 1] - x_l[i][1, k] <= self.a_acc * self.ts
+                x_l[i][1, k + 1] - x_l[i][1, k]
+                <= self.a_acc * self.ts - k * accel_cnstr_tightening
                 for i in range(self.n)
                 for k in range(self.N)
             ),
@@ -331,7 +341,8 @@ class LocalMpcGear(LocalMpc, MpcMldCentDecup, MpcGear):
         num_vehicles_behind: int,
         spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
         quadratic_cost: bool = True,
-        thread_limit: int | None = None
+        thread_limit: int | None = None,
+        accel_cnstr_tightening: float = 0.0,
     ) -> None:
         self.n = len(systems)
         MpcMldCentDecup.__init__(self, systems, self.n, N, thread_limit=thread_limit)
@@ -344,6 +355,7 @@ class LocalMpcGear(LocalMpc, MpcMldCentDecup, MpcGear):
             num_vehicles_behind,
             spacing_policy,
             quadratic_cost,
+            accel_cnstr_tightening,
         )
 
 
@@ -600,7 +612,12 @@ class TrackingEventBasedCoordinator(MldAgent):
 
 
 def simulate(
-    sim: Sim, event_iters: int, save: bool = False, plot: bool = True, seed: int = 2, thread_limit: int | None = None
+    sim: Sim,
+    event_iters: int,
+    save: bool = False,
+    plot: bool = True,
+    seed: int = 2,
+    thread_limit: int | None = None,
 ):
     n = sim.n  # num cars
     N = sim.N  # controller horizon
@@ -642,7 +659,8 @@ def simulate(
                 num_vehicles_in_front=i if i < 2 else 2,
                 num_vehicles_behind=(n - 1) - i if i > n - 3 else 2,
                 spacing_policy=spacing_policy,
-                thread_limit=thread_limit
+                thread_limit=thread_limit,
+                accel_cnstr_tightening=0.01,
             )
             for i in range(n)
         ]
@@ -659,6 +677,7 @@ def simulate(
                 num_vehicles_in_front=i if i < 2 else 2,
                 num_vehicles_behind=(n - 1) - i if i > n - 3 else 2,
                 spacing_policy=spacing_policy,
+                accel_cnstr_tightening=0.01,
             )
             for i in range(n)
         ]

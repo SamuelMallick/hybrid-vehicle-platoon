@@ -38,7 +38,7 @@ LT = 1
 HOM = True
 DG = False
 Q = True
-n_sw = [i for i in range(2, 4)]
+n_sw = [i for i in range(2, 3)]
 N = 5
 
 track_costs = []
@@ -64,7 +64,7 @@ for type in types:
         viols[counter].append(0)
         for seed in seeds:
             with open(
-                f"data/{type}_task_2_n_{n}_seed_{seed}.pkl",
+                f"data/{type}_task_1_n_{n}_seed_{seed}.pkl",
                 "rb",
             ) as file:
                 X = pickle.load(file)

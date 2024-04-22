@@ -11,9 +11,9 @@ plt.style.use("bmh")
 
 nx_l = 2
 plot_len = 100
-name = "decent"
-n = 4
-seed = 2
+name = "cent"
+n = 2
+seed = 1
 
 with open(
     f"data/{name}_task_1_n_{n}_seed_{seed}.pkl",

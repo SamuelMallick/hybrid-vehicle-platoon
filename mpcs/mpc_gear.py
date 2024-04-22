@@ -134,7 +134,9 @@ class MpcGear(MpcMld):
 class MpcNonlinearGear(MpcGear):
     """An MPC controller than uses a nonlinear vehicle model along with discrete gear inputs x^+ = f(x) + B(j,x)u."""
 
-    def __init__(self, systems: list[dict], N: int, thread_limit: int | None = None) -> None:
+    def __init__(
+        self, systems: list[dict], N: int, thread_limit: int | None = None
+    ) -> None:
         """Instantiate mixed-integer model for nonlinear dynamics for len(systems) systems."""
         # build mixed-integer model
         mpc_model = gp.Model("non_linear_gear_mpc")

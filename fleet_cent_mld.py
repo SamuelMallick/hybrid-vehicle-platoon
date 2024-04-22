@@ -30,14 +30,19 @@ class MpcGearCent(MpcMldCent, MpcMldCentDecup, MpcGear):
         systems: list[dict],
         spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
         quadratic_cost: bool = True,
-        thread_limit: int | None = None
+        thread_limit: int | None = None,
+        accel_cnstr_tightening: float = 0.0,
     ) -> None:
         self.n = n
-        MpcMldCentDecup.__init__(self, systems, n, N, thread_limit=thread_limit)  # use the MpcMld constructor
+        MpcMldCentDecup.__init__(
+            self, systems, n, N, thread_limit=thread_limit
+        )  # use the MpcMld constructor
         F = block_diag(*[systems[i]["F"] for i in range(n)])
         G = np.vstack([systems[i]["G"] for i in range(n)])
         self.setup_gears(N, F, G)
-        self.setup_cost_and_constraints(self.u_g, spacing_policy, quadratic_cost)
+        self.setup_cost_and_constraints(
+            self.u_g, spacing_policy, quadratic_cost, accel_cnstr_tightening
+        )
 
 
 class MpcNonlinearGearCent(MpcMldCent, MpcNonlinearGear):
@@ -48,7 +53,7 @@ class MpcNonlinearGearCent(MpcMldCent, MpcNonlinearGear):
         nl_systems: list[dict],
         spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
         quadratic_cost: bool = True,
-        thread_limit: int | None = None
+        thread_limit: int | None = None,
     ) -> None:
         MpcNonlinearGear.__init__(self, nl_systems, N, thread_limit=thread_limit)
         F = block_diag(*[nl_systems[i]["F"] for i in range(n)])
@@ -81,7 +86,13 @@ class TrackingCentralizedAgent(MldAgent):
         return super().on_episode_start(env, episode, state)
 
 
-def simulate(sim: Sim, save: bool = False, plot: bool = True, seed: int = 1, thread_limit : int | None = None):
+def simulate(
+    sim: Sim,
+    save: bool = False,
+    plot: bool = True,
+    seed: int = 1,
+    thread_limit: int | None = None,
+):
     n = sim.n  # num cars
     N = sim.N  # controller horizon
     ep_len = sim.ep_len  # length of episode (sim len)
@@ -111,11 +122,27 @@ def simulate(sim: Sim, save: bool = False, plot: bool = True, seed: int = 1, thr
 
     # mpcs
     if sim.vehicle_model_type == "pwa_gear":
-        mpc = MpcMldCent(n, N, systems, spacing_policy=spacing_policy, thread_limit=thread_limit)
+        mpc = MpcMldCent(
+            n,
+            N,
+            systems,
+            spacing_policy=spacing_policy,
+            thread_limit=thread_limit,
+            accel_cnstr_tightening=0.01,
+        )
     elif sim.vehicle_model_type == "pwa_friction":
-        mpc = MpcGearCent(n, N, systems, spacing_policy=spacing_policy, thread_limit=thread_limit)
+        mpc = MpcGearCent(
+            n,
+            N,
+            systems,
+            spacing_policy=spacing_policy,
+            thread_limit=thread_limit,
+            accel_cnstr_tightening=0.01,
+        )
     elif sim.vehicle_model_type == "nonlinear":
-        mpc = MpcNonlinearGearCent(n, N, systems, spacing_policy=spacing_policy, thread_limit=thread_limit)
+        mpc = MpcNonlinearGearCent(
+            n, N, systems, spacing_policy=spacing_policy, thread_limit=thread_limit
+        )
     else:
         raise ValueError(f"{sim.vehicle_model_type} is not a valid vehicle model type.")
 
@@ -156,4 +183,4 @@ def simulate(sim: Sim, save: bool = False, plot: bool = True, seed: int = 1, thr
 
 
 if __name__ == "__main__":
-    simulate(Sim(), save=False, seed=1)
+    simulate(Sim(), save=True, seed=1)

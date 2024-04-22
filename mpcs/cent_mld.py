@@ -25,7 +25,8 @@ class MpcMldCent(MpcMldCentDecup):
         pwa_systems: list[dict],
         spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
         quadratic_cost: bool = True,
-        thread_limit: int | None = None
+        thread_limit: int | None = None,
+        accel_cnstr_tightening: float = 0.0,
     ) -> None:
         super().__init__(
             pwa_systems, n, N, thread_limit=thread_limit
@@ -33,13 +34,16 @@ class MpcMldCent(MpcMldCentDecup):
         self.n = n
         self.N = N
 
-        self.setup_cost_and_constraints(self.u, spacing_policy, quadratic_cost)
+        self.setup_cost_and_constraints(
+            self.u, spacing_policy, quadratic_cost, accel_cnstr_tightening
+        )
 
     def setup_cost_and_constraints(
         self,
         u,
         spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
         quadratic_cost: bool = True,
+        accel_cnstr_tightening: float = 0.0,
     ):
         """Set up  cost and constraints for platoon tracking. Penalises the u passed in."""
         if quadratic_cost:
@@ -109,7 +113,8 @@ class MpcMldCent(MpcMldCentDecup):
         # acceleration constraints
         self.mpc_model.addConstrs(
             (
-                self.a_dec * self.ts <= x_l[i][1, k + 1] - x_l[i][1, k]
+                self.a_dec * self.ts
+                <= x_l[i][1, k + 1] - x_l[i][1, k] - k * accel_cnstr_tightening
                 for i in range(self.n)
                 for k in range(self.N)
             ),
@@ -117,7 +122,8 @@ class MpcMldCent(MpcMldCentDecup):
         )
         self.mpc_model.addConstrs(
             (
-                x_l[i][1, k + 1] - x_l[i][1, k] <= self.a_acc * self.ts
+                x_l[i][1, k + 1] - x_l[i][1, k]
+                <= self.a_acc * self.ts - k * accel_cnstr_tightening
                 for i in range(self.n)
                 for k in range(self.N)
             ),

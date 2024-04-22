@@ -38,11 +38,17 @@ class LocalMpcMld(MpcMld):
         quadratic_cost: bool = True,
         is_leader: bool = False,
         is_trailer: bool = False,
-        thread_limit: int | None = None
+        thread_limit: int | None = None,
+        accel_cnstr_tightening: float = 0.0,
     ) -> None:
         super().__init__(pwa_system, N, thread_limit=thread_limit)
         self.setup_cost_and_constraints(
-            self.u, spacing_policy, quadratic_cost, is_leader, is_trailer
+            self.u,
+            spacing_policy,
+            quadratic_cost,
+            is_leader,
+            is_trailer,
+            accel_cnstr_tightening,
         )
 
     def setup_cost_and_constraints(
@@ -52,6 +58,7 @@ class LocalMpcMld(MpcMld):
         quadratic_cost: bool = True,
         is_leader=False,
         is_trailer=False,
+        accel_cnstr_tightening: float = 0.0,
     ):
         """Set up  cost and constraints for vehicle. Penalises the u passed in."""
         if quadratic_cost:
@@ -127,14 +134,16 @@ class LocalMpcMld(MpcMld):
         # accel constraints
         self.mpc_model.addConstrs(
             (
-                self.a_dec * self.ts <= self.x[1, [k + 1]] - self.x[1, [k]]
+                self.a_dec * self.ts
+                <= self.x[1, [k + 1]] - self.x[1, [k]] - k * accel_cnstr_tightening
                 for k in range(self.N)
             ),
             name="dec",
         )
         self.mpc_model.addConstrs(
             (
-                self.x[1, [k + 1]] - self.x[1, [k]] <= self.a_acc * self.ts
+                self.x[1, [k + 1]] - self.x[1, [k]]
+                <= self.a_acc * self.ts - k * accel_cnstr_tightening
                 for k in range(self.N)
             ),
             name="acc",
@@ -180,12 +189,18 @@ class LocalMpcGear(LocalMpcMld, MpcGear):
         quadratic_cost: bool = True,
         is_leader: bool = False,
         is_trailer: bool = False,
-        thread_limit: int | None = None
+        thread_limit: int | None = None,
+        accel_cnstr_tightening: float = 0.0,
     ) -> None:
         MpcGear.__init__(self, pwa_system, N, thread_limit=thread_limit)
         self.setup_gears(N, pwa_system["F"], pwa_system["G"])
         self.setup_cost_and_constraints(
-            self.u_g, spacing_policy, quadratic_cost, is_leader, is_trailer
+            self.u_g,
+            spacing_policy,
+            quadratic_cost,
+            is_leader,
+            is_trailer,
+            accel_cnstr_tightening,
         )
 
 
@@ -274,7 +289,13 @@ class TrackingSequentialMldCoordinator(MldAgent):
         return super().on_episode_start(env, episode, state)
 
 
-def simulate(sim: Sim, save: bool = False, plot: bool = True, seed: int = 1, thread_limit: int | None = None):
+def simulate(
+    sim: Sim,
+    save: bool = False,
+    plot: bool = True,
+    seed: int = 1,
+    thread_limit: int | None = None,
+):
     n = sim.n  # num cars
     N = sim.N  # controller horizon
     ep_len = sim.ep_len  # length of episode (sim len)
@@ -318,7 +339,8 @@ def simulate(sim: Sim, save: bool = False, plot: bool = True, seed: int = 1, thr
             spacing_policy,
             is_leader=True if i == 0 else False,
             is_trailer=True if i == n - 1 else False,
-            thread_limit=thread_limit
+            thread_limit=thread_limit,
+            accel_cnstr_tightening=0.01,
         )
         for i in range(n)
     ]
@@ -360,4 +382,4 @@ def simulate(sim: Sim, save: bool = False, plot: bool = True, seed: int = 1, thr
 
 
 if __name__ == "__main__":
-    simulate(Sim(), seed=1)
+    simulate(Sim(), save=True, seed=1)
