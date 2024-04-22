@@ -13,18 +13,21 @@ types = [
     "cent",
     "decent",
     "seq",
-    "event_4",
-    "event_6",
+    "event_1",
+    "event_5",
     "event_10",
+    "admm_5",
     "admm_20",
     "admm_50",
 ]
+seeds = [1, 2]
 leg = [
     "decent",
     "seq",
-    "event_4",
-    "event_6",
+    "event_1",
+    "event_5",
     "event_10",
+    "admm_5",
     "admm_20",
     "admm_50",
 ]
@@ -35,7 +38,7 @@ LT = 1
 HOM = True
 DG = False
 Q = True
-n_sw = [i for i in range(2, 9)]
+n_sw = [i for i in range(2, 3)]
 N = 5
 
 track_costs = []
@@ -53,24 +56,31 @@ for type in types:
     nodes.append([])
     viols.append([])
     for n in n_sw:
-        with open(
-            f"data/task_1/{type}_n_task_1_{n}.pkl",
-            "rb",
-        ) as file:
-            X = pickle.load(file)
-            U = pickle.load(file)
-            R = pickle.load(file)
-            solve_times = pickle.load(file)
-            node_counts = pickle.load(file)
-            violations = pickle.load(file)
-            leader_state = pickle.load(file)
+        track_costs[counter].append(0)
+        time_min[counter].append(0)
+        time_max[counter].append(0)
+        time_av[counter].append(0)
+        nodes[counter].append(0)
+        viols[counter].append(0)
+        for seed in seeds:
+            with open(
+                f"data/{type}_task_1_n_{n}_seed_{seed}.pkl",
+                "rb",
+            ) as file:
+                X = pickle.load(file)
+                U = pickle.load(file)
+                R = pickle.load(file)
+                solve_times = pickle.load(file)
+                node_counts = pickle.load(file)
+                violations = pickle.load(file)
+                leader_state = pickle.load(file)
 
-        track_costs[counter].append(sum(R))
-        time_min[counter].append(min(solve_times)[0])
-        time_max[counter].append(max(solve_times)[0])
-        time_av[counter].append(sum(solve_times)[0] / len(solve_times))
-        nodes[counter].append(max(node_counts))
-        viols[counter].append(sum(violations) / 100)
+            track_costs[counter][-1] += sum(R)
+            time_min[counter][-1] += min(solve_times)[0]
+            time_max[counter][-1] += max(solve_times)[0]
+            time_av[counter][-1] += sum(solve_times)[0] / len(solve_times)
+            nodes[counter][-1] += max(node_counts)
+            viols[counter][-1] += sum(violations) / 100
     counter += 1
 
 

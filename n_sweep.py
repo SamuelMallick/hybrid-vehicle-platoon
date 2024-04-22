@@ -8,7 +8,7 @@ from misc.common_controller_params import Sim_n_task_2, Sim_n_task_1
 task_1 = True
 
 for n in range(2, 10):
-    for seed in range(1, 3):
+    for seed in range(3):
         if task_1:
             sim = Sim_n_task_1(n)
         else:
