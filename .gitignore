@@ -8,6 +8,7 @@ __pycache__/
 
 # large data
 data_large/
+*.pkl
 
 # Distribution / packaging
 .Python
