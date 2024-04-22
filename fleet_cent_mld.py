@@ -30,9 +30,10 @@ class MpcGearCent(MpcMldCent, MpcMldCentDecup, MpcGear):
         systems: list[dict],
         spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
         quadratic_cost: bool = True,
+        thread_limit: int | None = None
     ) -> None:
         self.n = n
-        MpcMldCentDecup.__init__(self, systems, n, N)  # use the MpcMld constructor
+        MpcMldCentDecup.__init__(self, systems, n, N, thread_limit=thread_limit)  # use the MpcMld constructor
         F = block_diag(*[systems[i]["F"] for i in range(n)])
         G = np.vstack([systems[i]["G"] for i in range(n)])
         self.setup_gears(N, F, G)
@@ -47,8 +48,9 @@ class MpcNonlinearGearCent(MpcMldCent, MpcNonlinearGear):
         nl_systems: list[dict],
         spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
         quadratic_cost: bool = True,
+        thread_limit: int | None = None
     ) -> None:
-        MpcNonlinearGear.__init__(self, nl_systems, N)
+        MpcNonlinearGear.__init__(self, nl_systems, N, thread_limit=thread_limit)
         F = block_diag(*[nl_systems[i]["F"] for i in range(n)])
         G = np.vstack([nl_systems[i]["G"] for i in range(n)])
         self.setup_gears(N, F, G)
@@ -79,7 +81,7 @@ class TrackingCentralizedAgent(MldAgent):
         return super().on_episode_start(env, episode, state)
 
 
-def simulate(sim: Sim, save: bool = False, plot: bool = True, seed: int = 1):
+def simulate(sim: Sim, save: bool = False, plot: bool = True, seed: int = 1, thread_limit : int | None = None):
     n = sim.n  # num cars
     N = sim.N  # controller horizon
     ep_len = sim.ep_len  # length of episode (sim len)
@@ -109,11 +111,11 @@ def simulate(sim: Sim, save: bool = False, plot: bool = True, seed: int = 1):
 
     # mpcs
     if sim.vehicle_model_type == "pwa_gear":
-        mpc = MpcMldCent(n, N, systems, spacing_policy=spacing_policy)
+        mpc = MpcMldCent(n, N, systems, spacing_policy=spacing_policy, thread_limit=thread_limit)
     elif sim.vehicle_model_type == "pwa_friction":
-        mpc = MpcGearCent(n, N, systems, spacing_policy=spacing_policy)
+        mpc = MpcGearCent(n, N, systems, spacing_policy=spacing_policy, thread_limit=thread_limit)
     elif sim.vehicle_model_type == "nonlinear":
-        mpc = MpcNonlinearGearCent(n, N, systems, spacing_policy=spacing_policy)
+        mpc = MpcNonlinearGearCent(n, N, systems, spacing_policy=spacing_policy, thread_limit=thread_limit)
     else:
         raise ValueError(f"{sim.vehicle_model_type} is not a valid vehicle model type.")
 

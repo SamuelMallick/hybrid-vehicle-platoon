@@ -38,8 +38,9 @@ class LocalMpcMld(MpcMld):
         quadratic_cost: bool = True,
         is_leader: bool = False,
         is_trailer: bool = False,
+        thread_limit: int | None = None
     ) -> None:
-        super().__init__(pwa_system, N)
+        super().__init__(pwa_system, N, thread_limit=thread_limit)
         self.N = N
         self.setup_cost_and_constraints(
             self.u, spacing_policy, quadratic_cost, is_leader, is_trailer
@@ -180,8 +181,9 @@ class LocalMpcGear(LocalMpcMld, MpcGear):
         quadratic_cost: bool = True,
         is_leader: bool = False,
         is_trailer: bool = False,
+        thread_limit: int | None = None
     ) -> None:
-        MpcGear.__init__(self, pwa_system, N)
+        MpcGear.__init__(self, pwa_system, N, thread_limit=thread_limit)
         self.setup_gears(N, pwa_system["F"], pwa_system["G"])
         self.setup_cost_and_constraints(
             self.u_g, spacing_policy, quadratic_cost, is_leader, is_trailer
@@ -280,7 +282,7 @@ class TrackingDecentMldCoordinator(MldAgent):
         return x_pred
 
 
-def simulate(sim: Sim, save: bool = False, plot: bool = True, seed: int = 2):
+def simulate(sim: Sim, save: bool = False, plot: bool = True, seed: int = 2, thread_limit: int | None = None):
     n = sim.n  # num cars
     N = sim.N  # controller horizon
     ep_len = sim.ep_len  # length of episode (sim len)
@@ -324,6 +326,7 @@ def simulate(sim: Sim, save: bool = False, plot: bool = True, seed: int = 2):
             spacing_policy,
             is_leader=True if i == 0 else False,
             is_trailer=True if i == n - 1 else False,
+            thread_limit=thread_limit
         )
         for i in range(n)
     ]

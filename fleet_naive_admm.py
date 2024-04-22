@@ -42,8 +42,9 @@ class LocalMpcADMM(MpcMld):
         quadratic_cost: bool = True,
         is_leader: bool = False,
         is_trailer: bool = False,
+        thread_limit: int | None = None
     ) -> None:
-        super().__init__(pwa_system, N)
+        super().__init__(pwa_system, N, thread_limit=thread_limit)
         self.rho = rho
         self.setup_cost_and_constraints(
             self.u, spacing_policy, quadratic_cost, is_leader, is_trailer
@@ -237,8 +238,9 @@ class LocalMpcGear(LocalMpcADMM, MpcGear):
         quadratic_cost: bool = True,
         is_leader: bool = False,
         is_trailer: bool = False,
+        thread_limit: int | None = None
     ) -> None:
-        MpcGear.__init__(self, system, N)
+        MpcGear.__init__(self, system, N, thread_limit=thread_limit)
         self.rho = rho
         self.setup_gears(N, system["F"], system["G"])
         self.setup_cost_and_constraints(
@@ -515,7 +517,7 @@ class ADMMCoordinator(MldAgent):
 
 
 def simulate(
-    sim: Sim, admm_iters: int = 20, save: bool = False, plot: bool = True, seed: int = 1
+    sim: Sim, admm_iters: int = 20, save: bool = False, plot: bool = True, seed: int = 1, thread_limit: int | None = None
 ):
     n = sim.n  # num cars
     N = sim.N  # controller horizon
@@ -561,6 +563,7 @@ def simulate(
             spacing_policy=spacing_policy,
             is_leader=True if i == 0 else False,
             is_trailer=True if i == n - 1 else False,
+            thread_limit=thread_limit
         )
         for i in range(n)
     ]

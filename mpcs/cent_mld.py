@@ -25,10 +25,11 @@ class MpcMldCent(MpcMldCentDecup):
         pwa_systems: list[dict],
         spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
         quadratic_cost: bool = True,
+        thread_limit: int | None = None
     ) -> None:
         super().__init__(
-            pwa_systems, n, N
-        )  # creates the state and control variables, sets teh dynamics, and creates the MLD constraints for PWA dynamics
+            pwa_systems, n, N, thread_limit=thread_limit
+        )  # creates the state and control variables, sets the dynamics, and creates the MLD constraints for PWA dynamics
         self.n = n
         self.N = N
 

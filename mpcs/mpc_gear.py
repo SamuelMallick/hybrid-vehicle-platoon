@@ -11,7 +11,7 @@ class MpcGear(MpcMld):
     each control signal are assumed decoupled.
     The dynamics are provided as a PWA system dict."""
 
-    def __init__(self, system: dict, N: int) -> None:
+    def __init__(self, system: dict, N: int, thread_limit: int | None = None) -> None:
         """Init the MLD model of PWA system and the MPC wit hdiscrete inputs.
         Parameters
         ----------
@@ -23,7 +23,7 @@ class MpcGear(MpcMld):
             Prediction horizon length."""
 
         # init the PWA system - MLD constraints and binary variables for PWA dynamics
-        super().__init__(system, N)
+        super().__init__(system, N, thread_limit=thread_limit)
 
     def setup_gears(self, N: int, F: np.ndarray, G: np.ndarray):
         """Set up constraints in mixed-integer problem for gears."""
@@ -134,12 +134,14 @@ class MpcGear(MpcMld):
 class MpcNonlinearGear(MpcGear):
     """An MPC controller than uses a nonlinear vehicle model along with discrete gear inputs x^+ = f(x) + B(j,x)u."""
 
-    def __init__(self, systems: list[dict], N: int) -> None:
+    def __init__(self, systems: list[dict], N: int, thread_limit: int | None = None) -> None:
         """Instantiate mixed-integer model for nonlinear dynamics for len(systems) systems."""
         # build mixed-integer model
         mpc_model = gp.Model("non_linear_gear_mpc")
         mpc_model.setParam("OutputFlag", 0)
         mpc_model.setParam("Heuristics", 0)
+        if thread_limit is not None:
+            mpc_model.params.threads = thread_limit
 
         # Uncomment if you need to differentiate between infeasbile and unbounded
         # mpc_model.setParam("DualReductions", 0)
