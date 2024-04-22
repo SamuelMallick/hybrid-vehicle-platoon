@@ -340,7 +340,7 @@ def simulate(
             is_leader=True if i == 0 else False,
             is_trailer=True if i == n - 1 else False,
             thread_limit=thread_limit,
-            accel_cnstr_tightening=0.01,
+            accel_cnstr_tightening=0.05,
         )
         for i in range(n)
     ]

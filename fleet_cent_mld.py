@@ -128,7 +128,7 @@ def simulate(
             systems,
             spacing_policy=spacing_policy,
             thread_limit=thread_limit,
-            accel_cnstr_tightening=0.01,
+            accel_cnstr_tightening=0.05,
         )
     elif sim.vehicle_model_type == "pwa_friction":
         mpc = MpcGearCent(
@@ -183,4 +183,4 @@ def simulate(
 
 
 if __name__ == "__main__":
-    simulate(Sim(), save=True, seed=1)
+    simulate(Sim(), save=False, seed=1)

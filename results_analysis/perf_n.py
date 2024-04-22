@@ -18,9 +18,9 @@ types = [
     "event_10",
     "admm_5",
     "admm_20",
-    "admm_50",
+    # "admm_50",
 ]
-seeds = [0, 1, 2]
+seeds = [0]
 leg = [
     "decent",
     "seq",
@@ -29,10 +29,10 @@ leg = [
     "event_10",
     "admm_5",
     "admm_20",
-    "admm_50",
+    # "admm_50",
 ]
 num_event_vars = 3
-num_admm_vars = 3
+num_admm_vars = 2
 
 LT = 1
 HOM = True

@@ -677,7 +677,7 @@ def simulate(
                 num_vehicles_in_front=i if i < 2 else 2,
                 num_vehicles_behind=(n - 1) - i if i > n - 3 else 2,
                 spacing_policy=spacing_policy,
-                accel_cnstr_tightening=0.01,
+                accel_cnstr_tightening=0.05,
             )
             for i in range(n)
         ]
