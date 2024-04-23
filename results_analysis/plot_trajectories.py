@@ -11,12 +11,12 @@ plt.style.use("bmh")
 
 nx_l = 2
 plot_len = 100
-name = "cent"
+name = "event_10"
 n = 2
 seed = 1
 
 with open(
-    f"data/{name}_task_1_n_{n}_seed_{seed}.pkl",
+    f"data/{name}_task_2_n_{n}_seed_{seed}.pkl",
     "rb",
 ) as file:
     X = pickle.load(file)

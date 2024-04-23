@@ -733,4 +733,4 @@ def simulate(
 
 
 if __name__ == "__main__":
-    simulate(Sim(), event_iters=4, seed=1)
+    simulate(Sim(), event_iters=1, seed=1)

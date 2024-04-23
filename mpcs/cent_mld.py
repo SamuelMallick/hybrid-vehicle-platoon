@@ -141,5 +141,5 @@ class MpcMldCent(MpcMldCentDecup):
 
     def set_leader_traj(self, leader_traj):
         for k in range(self.N + 1):
-            self.leader_traj[:, k].ub = leader_traj[:, k]
-            self.leader_traj[:, k].lb = leader_traj[:, k]
+            self.leader_traj[:, [k]].ub = leader_traj[:, [k]] 
+            self.leader_traj[:, [k]].lb = leader_traj[:, [k]]
