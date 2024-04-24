@@ -17,13 +17,13 @@ n = 15
 N = 5
 LT = 1
 
-names = ["cent", "gadmm", "seq", "admm100"]
+names = ["cent", "switching_admm", "seq"]# , "admm100"]
 error = []
 cost = []
 
 for name in names:
     with open(
-        f"data/{name}_n_{n}_N_{N}_Q_{Q}_DG_{DG}_HOM_{HOM}_LT_{LT}.pkl",
+        f"{name}_default_n_{n}_seed_2.pkl",
         "rb",
     ) as file:
         X = pickle.load(file)

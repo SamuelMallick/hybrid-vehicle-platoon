@@ -183,4 +183,4 @@ def simulate(
 
 
 if __name__ == "__main__":
-    simulate(Sim(), save=False, seed=0)
+    simulate(Sim(), save=True, seed=2)

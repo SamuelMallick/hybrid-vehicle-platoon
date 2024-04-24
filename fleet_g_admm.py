@@ -432,10 +432,10 @@ def simulate(
             pickle.dump(U, file)
             pickle.dump(R, file)
             pickle.dump(agent.solve_times, file)
-            pickle.dump(agent.node_counts, file)
+            pickle.dump(0, file)    # empty dump where the other approaches put node counts
             pickle.dump(env.unwrapped.viol_counter[0], file)
             pickle.dump(leader_x, file)
 
 
 if __name__ == "__main__":
-    simulate(Sim(), save=True, seed=1)
+    simulate(Sim(), save=True, seed=2)

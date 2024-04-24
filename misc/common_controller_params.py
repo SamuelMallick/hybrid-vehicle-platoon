@@ -27,8 +27,8 @@ class Sim:
     vehicle_model_type: Literal["nonlinear", "pwa_friction", "pwa_gear"] = "pwa_gear"
     start_from_platoon: bool = False
     quadratic_cost: bool = True
-    n = 2
-    N = 10
+    n = 15
+    N = 5
     ep_len = 100
     spacing_policy = ConstantSpacingPolicy(50)
     leader_trajectory = ConstantVelocityLeaderTrajectory(
@@ -44,7 +44,7 @@ class Sim:
     #     ts=Params.ts,
     # )
     masses = None
-    id = "default"
+    id = f"default_n_{n}"
 
 
 class Sim_n_task_1(Sim):
