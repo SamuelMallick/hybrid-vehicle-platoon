@@ -10,7 +10,7 @@ task_1 = True
 thread_limit = None
 seed = 2
 
-for n in [5, 10, 15]:
+for n in [15]:
     if task_1:
         sim = Sim_n_task_1(n)
     else:

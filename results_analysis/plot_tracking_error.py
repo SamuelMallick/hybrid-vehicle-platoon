@@ -2,6 +2,7 @@ import pickle
 
 import matplotlib.pyplot as plt
 import numpy as np
+from dmpcpwa.utils.tikz import save2tikz
 
 plt.rc("text", usetex=True)
 plt.rc("font", size=14)
@@ -13,17 +14,17 @@ plot_len = 100
 DG = False
 Q = True
 HOM = True
-n = 15
+n = 10
 N = 5
 LT = 1
 
-names = ["cent", "switching_admm", "seq"]# , "admm100"]
+names = ["cent", "switching_admm", "seq" , "admm_100"]
 error = []
 cost = []
 
 for name in names:
     with open(
-        f"{name}_default_n_{n}_seed_2.pkl",
+        f"paper_2024_data/{name}_task_1_n_{n}_seed_2.pkl",
         "rb",
     ) as file:
         X = pickle.load(file)
@@ -53,5 +54,5 @@ for e in cost:
 axs.set_xlabel(r"Time step $k$")
 axs.set_ylabel(r"$\sum_0^k J(k)$")
 axs.legend(["Centralized", "Sw-ADMM", "Sequential", "NC-ADMM"])
-# save2tikz(plt.gcf())
+save2tikz(plt.gcf())
 plt.show()

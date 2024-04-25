@@ -28,7 +28,7 @@ class Sim:
     start_from_platoon: bool = False
     quadratic_cost: bool = True
     n = 2
-    N = 10
+    N = 5
     ep_len = 100
     spacing_policy = ConstantSpacingPolicy(50)
     leader_trajectory = ConstantVelocityLeaderTrajectory(

@@ -9,7 +9,7 @@ plt.style.use("bmh")
 
 nx_l = 2
 
-types = ["cent", "gadmm", "seq", "admm100"]
+types = ["cent", "switching_admm", "seq", "admm_100"]
 leg = ["centralized", "Sw-ADMM", "sequential", "NC-ADMM"]
 
 LT = 1
@@ -35,7 +35,7 @@ for type in types:
     viols.append([])
     for n in n_sw:
         with open(
-            f"data/{type}_n_{n}_N_{N}_Q_{Q}_DG_{DG}_HOM_{HOM}_LT_{LT}.pkl",
+            f"paper_2024_data/{type}_task_1_n_{n}_seed_2.pkl",
             "rb",
         ) as file:
             X = pickle.load(file)
