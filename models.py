@@ -1,4 +1,5 @@
 from typing import Literal
+import warnings
 
 import gurobipy as gp
 import matplotlib.pyplot as plt
@@ -114,16 +115,17 @@ class Vehicle:
         """Step local non-linear hybrid dynamics with euler step of ts seconds."""
         if np.abs(u) > 1 + 1e5:  # small numerical tolerance for control bound
             raise ValueError("Control u is bounded -1 <= u <= 1.")
-        x_new = x + ts * (self.A(x) + self.B(x, j) * u)
-
-        if x_new[1, 0] < self.vl[0] or x_new[1, 0] > self.vh[-1]:
+        
+        if x[1, 0] < self.gear_model.v[0][0] or x[1, 0] > self.gear_model.v[-1][-1]:
             raise RuntimeError(
-                f"Velocity {x_new[1, 0]} of vehicle exeeds bounds {self.vl[0], self.vh[-1]}."
+                f"Velocity {x[1, 0]} of vehicle exeeds true model bounds {self.gear_model.v[0][0], self.gear_model.v[-1][-1]}."
             )
+        
+        x_new = x + ts * (self.A(x) + self.B(x, j) * u)
         return x_new
 
     def dyn(self, x, u, ts):
-        """Nonlinear discrete dynamics for gurobipy sybolic states and actions, wit heuler time step ts."""
+        """Nonlinear discrete dynamics for gurobipy sybolic states and actions, with euler time step ts."""
         if x.shape != (2, 1) or u.shape != (1, 1):
             raise ValueError(
                 f"Dyn function for nonlinear model only defined for x and u of size {(2, 1)} and {(1,1)}."
@@ -246,15 +248,23 @@ class PwaFrictionVehicle(Vehicle):
         Vehicle.__init__(self, m)
         self.system = self.build_friction_pwa_system(m)
 
-    def build_friction_pwa_system(self, mass: int):
+    def build_friction_pwa_system(self, mass: int, bound_velocity: bool = False):
         """Build PWA approximation of friction c*x2^2 = c1*x2 if x2 <= x2_max/2, = c2*x2-d."""
         # build PWA system representation in dictionary
-        S = [np.array([[0, 1], [0, -1]]), np.array([[0, 1], [0, -1]])]
+        if bound_velocity:
+            S = [np.array([[0, 1], [0, -1]]), np.array([[0, 1], [0, -1]])]
+            T = [
+                np.array([[self.alpha], [-self.v_min]]),
+                np.array([[self.v_max], [-self.alpha]]),
+            ]  # i.e., v >= v_min is part of PWA constraint
+        else:
+            S = [np.array([[0, 1], [0, 0]]), np.array([[0, 0], [0, -1]])]
+            T = [
+                np.array([[self.alpha], [0]]),
+                np.array([[0], [-self.alpha]]),
+            ]
         R = [np.zeros((2, 1)), np.zeros((2, 1))]
-        T = [
-            np.array([[self.alpha], [-self.v_min]]),
-            np.array([[self.v_max], [-self.alpha]]),
-        ]
+        
         A = [
             np.array([[0, 1], [0, -(self.c1) / (mass)]]),
             np.array([[0, 1], [0, -(self.c2) / (mass)]]),
@@ -287,9 +297,13 @@ class PwaFrictionVehicle(Vehicle):
     def get_gear_from_velocity(self, v: float):
         """Get a gear j that is valid for the velocity v."""
         if v < self.v_min or v > self.v_max:
-            raise ValueError(
+            warnings.warn(
                 f"Velocity {v} is not within bounds {self.v_min}/{self.v_max}"
             )
+            if v < self.v_min:  # return first gear if velocity is below min
+                return 1
+            if v > self.v_max:  # last gear if above max
+                return 6
         for i in range(len(self.b)):
             if v > self.vl[i] and v < self.vh[i]:  # return first valid gear found
                 return i + 1
@@ -302,8 +316,13 @@ class PwaFrictionVehicle(Vehicle):
 
         if j < 1 or j > 6:
             raise ValueError(f"{j} is not a valid gear.")
+
         j = j - 1
-        if v < self.vl[j] or v > self.vh[j]:
+        if v < self.v_min and j == 0:
+            warnings.warn(f"Velocity {v} is below min {self.v_min}, using first gear but result will be approximate.")
+        elif v > self.v_max and j == 5:
+            warnings.warn(f"Velocity {v} is above max {self.v_max}, using last gear but result will be approximate.")
+        elif v < self.vl[j] or v > self.vh[j]:
             raise ValueError(f"Velocity {v} is not valid for gear {j+1}")
 
         for i in range(len(self.system["S"])):
@@ -349,7 +368,7 @@ class PwaGearVehicle(PwaFrictionVehicle):
         Vehicle.__init__(self, m)
         self.system = self.build_gear_pwa_system(m)
 
-    def build_gear_pwa_system(self, mass: int):
+    def build_gear_pwa_system(self, mass: int, bound_velocity: bool = False):
         """Build PWA approximation of gears and frition."""
 
         # PWA regions velocity upper limits for gear switches
@@ -366,18 +385,21 @@ class PwaGearVehicle(PwaFrictionVehicle):
         B = []
         c = []
 
-        for i in range(s):
+        S.append(np.array([[0, 1], [0, -1]]) if bound_velocity else np.array([[0, 1], [0, 0]]))
+        for i in range(1, s-1):
             S.append(np.array([[0, 1], [0, -1]]))
-            R.append(np.zeros((r, 1)))
+        S.append(np.array([[0, 1], [0, -1]]) if bound_velocity else np.array([[0, 0], [0, -1]]))
+
+        R = [np.zeros((r, 1)) for _ in range(s)]
 
         # manually append the limits
-        T.append(np.array([[self.v_gear_lim[0]], [-self.p_min]]))
+        T.append(np.array([[self.v_gear_lim[0]], [-self.v_min]]) if bound_velocity else np.array([[self.v_gear_lim[0]], [0]]))
         T.append(np.array([[self.v_gear_lim[1]], [-self.v_gear_lim[0]]]))
         T.append(np.array([[self.v_gear_lim[2]], [-self.v_gear_lim[1]]]))
         T.append(np.array([[self.alpha], [-self.v_gear_lim[2]]]))
         T.append(np.array([[self.v_gear_lim[3]], [-self.alpha]]))
         T.append(np.array([[self.v_gear_lim[4]], [-self.v_gear_lim[3]]]))
-        T.append(np.array([[self.p_max], [-self.v_gear_lim[4]]]))
+        T.append(np.array([[self.v_max], [-self.v_gear_lim[4]]]) if bound_velocity else np.array([[0], [-self.v_gear_lim[4]]]))
 
         # manually append the A matrices - first three regions have c1 and last four have c2 for friction
         A.append(np.array([[0, 1], [0, -(self.c1) / (mass)]]))
@@ -435,10 +457,14 @@ class PwaGearVehicle(PwaFrictionVehicle):
                 return i + 2
 
         # check gear 1
-        if v < self.v_gear_lim[0] and v >= self.v_min:
+        if v < self.v_gear_lim[0]:
+            if v < self.v_min:
+                warnings.warn(f"Velocity {v} is below min {self.v_min}, using first gear but result will be approximate.")
             return 1
         # check gear 6
-        if v >= self.v_gear_lim[-1] and v <= self.v_max:
+        if v >= self.v_gear_lim[-1]:
+            if v > self.v_max:
+                warnings.warn(f"Velocity {v} is above max {self.v_max}, using last gear but result will be approximate.")
             return 6
         raise RuntimeError(f"Didn't find any gear for the given speed {v}")
 
@@ -459,8 +485,8 @@ class PwaGearVehicle(PwaFrictionVehicle):
                     + ts * self.system["B"][j] @ u
                     + ts * self.system["c"][j]
                 )
-                break
-        return x_pwa
+                return x_pwa
+        raise RuntimeError(f'Didnt find PWA region for x: {x} and u: {u}')
 
     def get_u_for_constant_vel(self, v: float):
         """Get the control input which will keep the velocity v constant, as by the PWA dynamics."""
