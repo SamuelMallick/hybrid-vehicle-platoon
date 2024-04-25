@@ -29,7 +29,7 @@ class MpcMldCent(MpcMldCentDecup):
         accel_cnstr_tightening: float = 0.0,
     ) -> None:
         super().__init__(
-            pwa_systems, n, N, thread_limit=thread_limit
+            pwa_systems, n, N, thread_limit=thread_limit, constrain_first_state=False
         )  # creates the state and control variables, sets the dynamics, and creates the MLD constraints for PWA dynamics
         self.n = n
         self.N = N

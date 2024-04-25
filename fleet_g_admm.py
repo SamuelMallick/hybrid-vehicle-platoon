@@ -77,7 +77,7 @@ class LocalMpc(MpcSwitching):
         self.set_dynamics(nx_l, nu_l, r, x, u, x_c_list)
 
         # normal constraints
-        for k in range(N + 1):
+        for k in range(1, N + 1):
             self.constraint(
                 f"state_{k}", pwa_system["D"] @ x[:, [k]], "<=", pwa_system["E"]
             )

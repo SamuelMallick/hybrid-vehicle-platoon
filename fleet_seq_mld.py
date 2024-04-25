@@ -41,7 +41,7 @@ class LocalMpcMld(MpcMld):
         thread_limit: int | None = None,
         accel_cnstr_tightening: float = 0.0,
     ) -> None:
-        super().__init__(pwa_system, N, thread_limit=thread_limit)
+        super().__init__(pwa_system, N, thread_limit=thread_limit, constrain_first_state=False)
         self.setup_cost_and_constraints(
             self.u,
             spacing_policy,
@@ -192,7 +192,7 @@ class LocalMpcGear(LocalMpcMld, MpcGear):
         thread_limit: int | None = None,
         accel_cnstr_tightening: float = 0.0,
     ) -> None:
-        MpcGear.__init__(self, pwa_system, N, thread_limit=thread_limit)
+        MpcGear.__init__(self, pwa_system, N, thread_limit=thread_limit, constrain_first_state=False)
         self.setup_gears(N, pwa_system["F"], pwa_system["G"])
         self.setup_cost_and_constraints(
             self.u_g,

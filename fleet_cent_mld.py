@@ -35,7 +35,7 @@ class MpcGearCent(MpcMldCent, MpcMldCentDecup, MpcGear):
     ) -> None:
         self.n = n
         MpcMldCentDecup.__init__(
-            self, systems, n, N, thread_limit=thread_limit
+            self, systems, n, N, thread_limit=thread_limit, constrain_first_state=False
         )  # use the MpcMld constructor
         F = block_diag(*[systems[i]["F"] for i in range(n)])
         G = np.vstack([systems[i]["G"] for i in range(n)])

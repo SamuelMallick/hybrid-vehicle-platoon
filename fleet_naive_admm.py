@@ -45,7 +45,7 @@ class LocalMpcADMM(MpcMld):
         thread_limit: int | None = None,
         accel_cnstr_tightening: float = 0.0,
     ) -> None:
-        super().__init__(pwa_system, N, thread_limit=thread_limit)
+        super().__init__(pwa_system, N, thread_limit=thread_limit, constrain_first_state=False)
         self.rho = rho
         self.setup_cost_and_constraints(
             self.u,
@@ -250,7 +250,7 @@ class LocalMpcGear(LocalMpcADMM, MpcGear):
         thread_limit: int | None = None,
         accel_cnstr_tightening: float = 0.0,
     ) -> None:
-        MpcGear.__init__(self, system, N, thread_limit=thread_limit)
+        MpcGear.__init__(self, system, N, thread_limit=thread_limit, constrain_first_state=False)
         self.rho = rho
         self.setup_gears(N, system["F"], system["G"])
         self.setup_cost_and_constraints(

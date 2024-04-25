@@ -56,6 +56,7 @@ class LocalMpc(MpcMldCentDecup):
             self.n,
             N,
             thread_limit=thread_limit,
+            constrain_first_state=False
         )
         self.setup_cost_and_constraints(
             self.u,
@@ -345,7 +346,7 @@ class LocalMpcGear(LocalMpc, MpcMldCentDecup, MpcGear):
         accel_cnstr_tightening: float = 0.0,
     ) -> None:
         self.n = len(systems)
-        MpcMldCentDecup.__init__(self, systems, self.n, N, thread_limit=thread_limit)
+        MpcMldCentDecup.__init__(self, systems, self.n, N, thread_limit=thread_limit, constrain_first_state=False)
         F = block_diag(*([systems[i]["F"] for i in range(self.n)]))
         G = np.vstack([systems[i]["G"] for i in range(self.n)])
         self.setup_gears(N, F, G)
