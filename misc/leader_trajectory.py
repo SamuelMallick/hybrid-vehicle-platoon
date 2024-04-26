@@ -41,11 +41,13 @@ class StopAndGoLeaderTrajectory(LeaderTrajectory):
         v_change_steps: list[int],
         trajectory_len: int,
         ts: float,
+        vf: float | None = None,
     ) -> None:
         super().__init__(trajectory_len, ts)
         self.p0 = p
         self.vh = vh
         self.vl = vl
+        self.vf = vf
         if len(v_change_steps) != 2:
             raise ValueError(
                 f"v_change_steps should have 2 items, received {len(v_change_steps)}"
@@ -62,6 +64,6 @@ class StopAndGoLeaderTrajectory(LeaderTrajectory):
                 v = self.vl
                 x[1, [k + 1]] = v
             elif k >= self.v_change_steps[1]:
-                v = self.vh
+                v = self.vh if self.vf is None else self.vf
                 x[1, [k + 1]] = v
         return x

@@ -70,13 +70,13 @@ class PlatoonEnv(gym.Env[npt.NDArray[np.floating], npt.NDArray[np.floating]]):
 
         np.random.seed(seed)
         # create once 100 random starting states
-        starting_velocities = [30] + [
-            20 * np.random.random() + 5 for i in range(100)
-        ]  # starting velocities between 5-40 ms-1
+        starting_velocities = [
+            30 * np.random.random() + 5 for i in range(100)
+        ]  # starting velocities between 5-35 ms-1
         # starting positions between 0-1000 meters, with some forced spacing
         front_pos = 3000.0
-        spread = 50
-        spacing = 50
+        spread = 100
+        spacing = 60
         starting_positions = [front_pos]
         for i in range(1, 100):
             starting_positions.append(

@@ -27,22 +27,23 @@ class Sim:
     vehicle_model_type: Literal["nonlinear", "pwa_friction", "pwa_gear"] = "pwa_gear"
     start_from_platoon: bool = False
     quadratic_cost: bool = True
-    n = 2
-    N = 10
-    ep_len = 100
-    spacing_policy = ConstantSpacingPolicy(50)
-    leader_trajectory = ConstantVelocityLeaderTrajectory(
-        p=3000, v=20, trajectory_len=ep_len + 50, ts=Params.ts
-    )
-    # spacing_policy = ConstantTimePolicy(10, 3)
-    # leader_trajectory = StopAndGoLeaderTrajectory(
-    #     p=3000,
-    #     vh=30,
-    #     vl=10,
-    #     v_change_steps=[40, 60],
-    #     trajectory_len=ep_len + 50,
-    #     ts=Params.ts,
+    n = 10
+    N = 8
+    ep_len = 200
+    # spacing_policy = ConstantSpacingPolicy(50)
+    # leader_trajectory = ConstantVelocityLeaderTrajectory(
+    #     p=3000, v=20, trajectory_len=ep_len + 50, ts=Params.ts
     # )
+    spacing_policy = ConstantTimePolicy(10, 3)
+    leader_trajectory = StopAndGoLeaderTrajectory(
+        p=3000,
+        vh=20,
+        vl=10,
+        vf=30,
+        v_change_steps=[40, 100],
+        trajectory_len=ep_len + 50,
+        ts=Params.ts,
+    )
     masses = None
     id = f"default_n_{n}"
 
@@ -66,9 +67,10 @@ class Sim_n_task_2(Sim):
         self.spacing_policy = ConstantTimePolicy(10, 3)
         self.leader_trajectory = StopAndGoLeaderTrajectory(
             p=3000,
-            vh=30,
+            vh=20,
             vl=10,
-            v_change_steps=[40, 60],
+            vf=30,
+            v_change_steps=[40, 100],
             trajectory_len=self.ep_len + 50,
             ts=Params.ts,
         )

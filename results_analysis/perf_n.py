@@ -14,32 +14,32 @@ types = [
     "decent",
     "seq",
     "event_1",
-    # "event_5",
-    # "event_10",
+    "event_5",
+    "event_10",
     "admm_5",
-    # "admm_20",
-    # "admm_50",
+    "admm_20",
+    "admm_50",
 ]
-seeds = [0, 1]
+seeds = [0]
 leg = [
     "decent",
     "seq",
     "event_1",
-    # "event_5",
-    # "event_10",
+    "event_5",
+    "event_10",
     "admm_5",
-    # "admm_20",
-    # "admm_50",
+    "admm_20",
+    "admm_50",
 ]
-num_event_vars = 1
-num_admm_vars = 1
+num_event_vars = 3
+num_admm_vars = 3
 
 LT = 1
 HOM = True
 DG = False
 Q = True
-n_sw = [i for i in range(2, 3)]
-N = 5
+n_sw = [i for i in range(2, 8)]
+N = 8
 
 track_costs = []
 time_min = []
@@ -64,7 +64,7 @@ for type in types:
         viols[counter].append(0)
         for seed in seeds:
             with open(
-                f"data/{type}_task_1_n_{n}_seed_{seed}.pkl",
+                f"data/{type}_task_2_n_{n}_N_{N}_seed_{seed}.pkl",
                 "rb",
             ) as file:
                 X = pickle.load(file)
