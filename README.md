@@ -1,22 +1,23 @@
-# A Comparison Benchmark for Distributed Hybrid MPC Control Methods: Distributed Vehicle Platooning
+# Distributed MPC for PWA Systems Based on Switching ADMM
 
 [![Source Code License](https://img.shields.io/badge/license-GPL-blueviolet)](https://github.com/SamuelMallick/hybrid-vehicle-platoon/blob/main/LICENSE)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 
-This repository contains the source code used to produce the results obtained in [A Comparison Benchmark for Distributed Hybrid MPC Control Methods: Distributed Vehicle Platooning](https://arxiv.org/abs/2401.09878) submitted to [IEEE Transactions on Control Systems Technology](https://ieeecss.org/publication/transactions-control-systems-technology).
+This repository contains the source code used to produce the results obtained in example 2 of [Distributed MPC for PWA Systems Based on Switching ADMM](https://arxiv.org/abs/2404.16712) submitted to [IEEE Transactions on Automatic Control](https://ieeexplore.ieee.org/xpl/RecentIssue.jsp?punumber=9).
 
 In this work, we propose a benchmark control problem for evaluating distributed hybrid model predictive controllers. The benchmark problem is the control of a platoon of vehicles, with the vehicle dynamics modelled as a hybrid system. We present two modelling approaches and evaluate five existing hybrid model predictive controllers on the benchmark.
 
 If you find the paper or this repository helpful in your publications, please consider citing it.
 
 ```bibtex
-@article{mallick2023comparison,
-  title = {A Comparison Benchmark for Distributed Hybrid MPC Control Methods: Distributed Vehicle Platooning},
-  author = {Mallick, Samuel and Dabiri, Azita and De Schutter, Bart},
-  journal={arXiv preprint arXiv:2401.09878},
-  year = {2023},
-  url = {https://arxiv.org/abs/2401.09878}
+@article{
+    mallick2024distributed,
+    title={Distributed MPC for PWA Systems Based on Switching ADMM}, 
+    author={Samuel Mallick and Azita Dabiri and Bart De Schutter},
+    year={2024},
+    eprint={2404.16712},
+    archivePrefix={arXiv}
 }
 ```
 
@@ -24,7 +25,7 @@ If you find the paper or this repository helpful in your publications, please co
 
 ## Installation
 
-The code was created with `Python 3.9`. To access it, clone the repository
+The code was created with `Python 3.11`. To access it, clone the repository
 
 ```bash
 git clone https://github.com/SamuelMallick/hybrid-vehicle-platoon
@@ -41,13 +42,12 @@ pip install -r requirements.txt
 
 The repository code is structured in the following way
 
-- **`ACC_env.py`** contains the environment for simulating the platoon. This updates the state of the platoon according to the nonlinear hybrid model, and generates the cost penalties for given states.
-- **`ACC_model.py`** contains all functions and data structures related to the modelling of the vehicles.
-- **`bash_scripts`** contains contains bash scripts for automated running of tests.
-- **`data`** contains '.pkl' files for data used in A Comparison Benchmark for Distributed Hybrid MPC Control Methods: Distributed Vehicle Platooning.
-- **`results_analysis`** contains scripts for generating the images and tables used in A Comparison Benchmark for Distributed Hybrid MPC Control Methods: Distributed Vehicle Platooning.
-- **`fleet_{cent_mld, decent_mld, seq_mld, event_based, naive_admm}.py`** launch simulations for the five controllers used in A Comparison Benchmark for Distributed Hybrid MPC Control Methods: Distributed Vehicle Platooning.
-
+- **`misc`** contains auxilary classes and common controller parameters.
+- **`mpcs`** contains base classes for model predictive controller formulations. 
+- **`models.py`** contains the vehicle models used for prediction and simulation.
+- **`env.py`** contains the environment for simulating the platoon.
+- **`fleet_{cent_mld, g_admm, seq_mld, naive_admm}.py`** are the controllers used in Distributed MPC for PWA Systems Based on Switching ADMM.
+- **`all other files`** are for data processing, or other projects that consider the platoon problem.
 ```
 
 ## License
