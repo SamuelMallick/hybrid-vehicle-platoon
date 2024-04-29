@@ -27,6 +27,7 @@ class MpcMldCent(MpcMldCentDecup):
         quadratic_cost: bool = True,
         thread_limit: int | None = None,
         accel_cnstr_tightening: float = 0.0,
+        real_vehicle_as_reference: bool = False,
     ) -> None:
         super().__init__(
             pwa_systems, n, N, thread_limit=thread_limit, constrain_first_state=False
@@ -35,7 +36,11 @@ class MpcMldCent(MpcMldCentDecup):
         self.N = N
 
         self.setup_cost_and_constraints(
-            self.u, spacing_policy, quadratic_cost, accel_cnstr_tightening
+            self.u,
+            spacing_policy,
+            quadratic_cost,
+            accel_cnstr_tightening,
+            real_vehicle_as_reference,
         )
 
     def setup_cost_and_constraints(
@@ -44,6 +49,7 @@ class MpcMldCent(MpcMldCentDecup):
         spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
         quadratic_cost: bool = True,
         accel_cnstr_tightening: float = 0.0,
+        real_vehicle_as_reference: bool = False,
     ):
         """Set up  cost and constraints for platoon tracking. Penalises the u passed in."""
         if quadratic_cost:
@@ -68,12 +74,25 @@ class MpcMldCent(MpcMldCentDecup):
         x_l = [self.x[i * nx_l : (i + 1) * nx_l, :] for i in range(self.n)]
         u_l = [u[i * nu_l : (i + 1) * nu_l, :] for i in range(self.n)]
         # tracking cost
-        cost += sum(
-            [
-                self.cost_func(x_l[0][:, [k]] - self.leader_traj[:, [k]], self.Q_x)
-                for k in range(self.N + 1)
-            ]
-        )
+        if not real_vehicle_as_reference:
+            cost += sum(
+                [
+                    self.cost_func(x_l[0][:, [k]] - self.leader_traj[:, [k]], self.Q_x)
+                    for k in range(self.N + 1)
+                ]
+            )
+        else:
+            cost += sum(
+                [
+                    self.cost_func(
+                        x_l[0][:, [k]]
+                        - self.leader_traj[:, [k]]
+                        - spacing_policy.spacing(x_l[0][:, [k]]),
+                        self.Q_x,
+                    )
+                    for k in range(self.N + 1)
+                ]
+            )
         cost += sum(
             [
                 self.cost_func(
@@ -130,6 +149,14 @@ class MpcMldCent(MpcMldCentDecup):
             name="acc",
         )
         # safe distance behind follower vehicle
+        if real_vehicle_as_reference:
+            self.mpc_model.addConstrs(
+                (
+                    x_l[0][0, k] <= self.leader_traj[0, k] - self.d_safe + self.s[0, k]
+                    for k in range(self.N + 1)
+                ),
+                name="safe_leader",
+            )
         self.mpc_model.addConstrs(
             (
                 x_l[i][0, k] <= x_l[i - 1][0, k] - self.d_safe + self.s[i, k]

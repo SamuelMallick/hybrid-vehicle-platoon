@@ -17,7 +17,7 @@ n = 15
 N = 5
 LT = 1
 
-names = ["cent", "switching_admm", "seq"]# , "admm100"]
+names = ["cent", "switching_admm", "seq"]  # , "admm100"]
 error = []
 cost = []
 

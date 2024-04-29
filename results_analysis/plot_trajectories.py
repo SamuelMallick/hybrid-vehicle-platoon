@@ -11,13 +11,14 @@ plt.style.use("bmh")
 
 nx_l = 2
 plot_len = 100
-name = "decent"
+name = "seq"
 n = 6
-N=8
+N = 8
 seed = 0
 
 with open(
-    f"data/{name}_task_2_n_{n}_N_{N}_seed_{seed}.pkl",
+    # f"data/{name}_task_2_n_{n}_seed_{seed}.pkl",
+    "seq_default_n_6_seed_1.pkl",
     "rb",
 ) as file:
     X = pickle.load(file)
@@ -31,7 +32,7 @@ with open(
 print(f"tracking const: {sum(R)}")
 print(f"av comp time: {sum(solve_times)/len(solve_times)}")
 
-_, axs = plt.subplots(3, 1, constrained_layout=True, sharex=True)
+_, axs = plt.subplots(4, 1, constrained_layout=True, sharex=True)
 axs[0].plot(leader_state[0, :plot_len], "--")
 axs[1].plot(leader_state[1, :plot_len], "--")
 for i in range(n):
@@ -40,6 +41,9 @@ for i in range(n):
     if i > 0:
         axs[2].plot(X[:plot_len, nx_l * (i - 1)] - X[:plot_len, nx_l * (i)])
         axs[2].plot([0, plot_len], [25, 25], color="red")
+    axs[3].plot(
+        [X[k + 1, nx_l * i + 1] - X[k, nx_l * i + 1] for k in range(plot_len - 1)]
+    )
 
 ylim = 3000
 axs[0].fill_between(

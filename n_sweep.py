@@ -27,26 +27,38 @@ for n in range(2, 10):
         except:
             pass
         try:
-            sim_event(sim, 1, save=True, plot=False, seed=seed, thread_limit=thread_limit)
+            sim_event(
+                sim, 1, save=True, plot=False, seed=seed, thread_limit=thread_limit
+            )
         except:
             pass
         try:
-            sim_event(sim, 5, save=True, plot=False, seed=seed, thread_limit=thread_limit)
+            sim_event(
+                sim, 5, save=True, plot=False, seed=seed, thread_limit=thread_limit
+            )
         except:
             pass
         try:
-            sim_event(sim, 10, save=True, plot=False, seed=seed, thread_limit=thread_limit)
+            sim_event(
+                sim, 10, save=True, plot=False, seed=seed, thread_limit=thread_limit
+            )
         except:
             pass
         try:
-            sim_admm(sim, 5, save=True, plot=False, seed=seed, thread_limit=thread_limit)
+            sim_admm(
+                sim, 5, save=True, plot=False, seed=seed, thread_limit=thread_limit
+            )
         except:
             pass
         try:
-            sim_admm(sim, 20, save=True, plot=False, seed=seed, thread_limit=thread_limit)
+            sim_admm(
+                sim, 20, save=True, plot=False, seed=seed, thread_limit=thread_limit
+            )
         except:
             pass
         try:
-            sim_admm(sim, 50, save=True, plot=False, seed=seed, thread_limit=thread_limit)
+            sim_admm(
+                sim, 50, save=True, plot=False, seed=seed, thread_limit=thread_limit
+            )
         except:
             pass

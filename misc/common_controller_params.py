@@ -5,6 +5,7 @@ import numpy as np
 from misc.leader_trajectory import (
     ConstantVelocityLeaderTrajectory,
     StopAndGoLeaderTrajectory,
+    VolatileTrajectory,
 )
 from misc.spacing_policy import ConstantSpacingPolicy, ConstantTimePolicy
 
@@ -24,26 +25,30 @@ class Params:
 
 
 class Sim:
+    real_vehicle_as_reference = True
     vehicle_model_type: Literal["nonlinear", "pwa_friction", "pwa_gear"] = "pwa_gear"
-    start_from_platoon: bool = False
+    start_from_platoon: bool = True
     quadratic_cost: bool = True
-    n = 10
+    n = 4
     N = 8
-    ep_len = 200
+    ep_len = 100
     # spacing_policy = ConstantSpacingPolicy(50)
     # leader_trajectory = ConstantVelocityLeaderTrajectory(
     #     p=3000, v=20, trajectory_len=ep_len + 50, ts=Params.ts
     # )
-    spacing_policy = ConstantTimePolicy(10, 3)
-    leader_trajectory = StopAndGoLeaderTrajectory(
-        p=3000,
-        vh=20,
-        vl=10,
-        vf=30,
-        v_change_steps=[40, 100],
-        trajectory_len=ep_len + 50,
-        ts=Params.ts,
+    leader_trajectory = VolatileTrajectory(
+        p=3100, trajectory_len=ep_len + 50, ts=Params.ts
     )
+    spacing_policy = ConstantTimePolicy(10, 3)
+    # leader_trajectory = StopAndGoLeaderTrajectory(
+    #     p=3100,
+    #     vh=20,
+    #     vl=10,
+    #     vf=30,
+    #     v_change_steps=[20, 25],
+    #     trajectory_len=ep_len + 50,
+    #     ts=Params.ts,
+    # )
     masses = None
     id = f"default_n_{n}"
 
@@ -55,7 +60,7 @@ class Sim_n_task_1(Sim):
         self.id = f"task_1_n_{n}"
         self.spacing_policy = ConstantSpacingPolicy(50)
         self.leader_trajectory = ConstantVelocityLeaderTrajectory(
-            p=3000, v=20, trajectory_len=self.ep_len + 50, ts=Params.ts
+            p=3100, v=20, trajectory_len=self.ep_len + 50, ts=Params.ts
         )
 
 
@@ -66,7 +71,7 @@ class Sim_n_task_2(Sim):
         self.id = f"task_2_n_{n}"
         self.spacing_policy = ConstantTimePolicy(10, 3)
         self.leader_trajectory = StopAndGoLeaderTrajectory(
-            p=3000,
+            p=3100,
             vh=20,
             vl=10,
             vf=30,

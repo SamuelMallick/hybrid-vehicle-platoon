@@ -44,7 +44,7 @@ class LocalMpc(MpcSwitching):
         """Instantiate inner switching MPC for admm for car fleet. If leader is true the cost uses the reference traj
         My index is used to pick out own state from the grouped coupling states.
         It should be passed in via the mapping G (G[i].index(i))"""
-        self.horizon=N  # needed for Nlp object
+        self.horizon = N  # needed for Nlp object
         nlp = Nlp[cs.SX]()
         super().__init__(nlp, N)
         nx_l = Vehicle.nx_l
@@ -222,7 +222,7 @@ class TrackingGAdmmCoordinator(GAdmmCoordinator):
         Adj: np.ndarray,
         rho: float,
         debug_plot: bool = False,
-        admm_iters: int = 50
+        admm_iters: int = 50,
     ) -> None:
         super().__init__(
             local_mpcs,
@@ -432,7 +432,9 @@ def simulate(
             pickle.dump(U, file)
             pickle.dump(R, file)
             pickle.dump(agent.solve_times, file)
-            pickle.dump(0, file)    # empty dump where the other approaches put node counts
+            pickle.dump(
+                0, file
+            )  # empty dump where the other approaches put node counts
             pickle.dump(env.unwrapped.viol_counter[0], file)
             pickle.dump(leader_x, file)
 

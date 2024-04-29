@@ -40,8 +40,11 @@ class LocalMpcMld(MpcMld):
         is_trailer: bool = False,
         thread_limit: int | None = None,
         accel_cnstr_tightening: float = 0.0,
+        real_vehicle_as_reference: bool = False,
     ) -> None:
-        super().__init__(pwa_system, N, thread_limit=thread_limit, constrain_first_state=False)
+        super().__init__(
+            pwa_system, N, thread_limit=thread_limit, constrain_first_state=False
+        )
         self.N = N
         self.setup_cost_and_constraints(
             self.u,
@@ -50,6 +53,7 @@ class LocalMpcMld(MpcMld):
             is_leader,
             is_trailer,
             accel_cnstr_tightening,
+            real_vehicle_as_reference,
         )
 
     def setup_cost_and_constraints(
@@ -60,6 +64,7 @@ class LocalMpcMld(MpcMld):
         is_leader=False,
         is_trailer=False,
         accel_cnstr_tightening: float = 0.0,
+        real_vehicle_as_reference: bool = False,
     ):
         """Set up  cost and constraints for vehicle. Penalises the u passed in."""
         if quadratic_cost:
@@ -87,7 +92,7 @@ class LocalMpcMld(MpcMld):
 
         # setting these bounds to zero removes the slack var, as leader and trailer
         # dont have cars in front or behind respectively
-        if is_leader:
+        if is_leader and not real_vehicle_as_reference:
             self.s_front.ub = 0
         if is_trailer:
             self.s_back.ub = 0
@@ -95,7 +100,7 @@ class LocalMpcMld(MpcMld):
         # cost func
         cost = 0
         # tracking cost
-        if is_leader:
+        if is_leader and not real_vehicle_as_reference:
             cost += sum(
                 [
                     self.cost_func(self.x[:, [k]] - self.x_front[:, [k]], self.Q_x)
@@ -151,7 +156,7 @@ class LocalMpcMld(MpcMld):
         )
 
         # safe distance constraints
-        if not is_leader:
+        if not is_leader or real_vehicle_as_reference:
             self.mpc_model.addConstrs(
                 (
                     self.x[0, [k]] - self.s_front[[k]]
@@ -192,8 +197,11 @@ class LocalMpcGear(LocalMpcMld, MpcGear):
         is_trailer: bool = False,
         thread_limit: int | None = None,
         accel_cnstr_tightening: float = 0.0,
+        real_vehicle_as_reference: bool = False,
     ) -> None:
-        MpcGear.__init__(self, pwa_system, N, thread_limit=thread_limit, constrain_first_state=False)
+        MpcGear.__init__(
+            self, pwa_system, N, thread_limit=thread_limit, constrain_first_state=False
+        )
         self.setup_gears(N, pwa_system["F"], pwa_system["G"])
         self.setup_cost_and_constraints(
             self.u_g,
@@ -202,6 +210,7 @@ class LocalMpcGear(LocalMpcMld, MpcGear):
             is_leader,
             is_trailer,
             accel_cnstr_tightening,
+            real_vehicle_as_reference,
         )
 
 
@@ -326,6 +335,8 @@ def simulate(
                 leader_trajectory=leader_trajectory,
                 spacing_policy=spacing_policy,
                 start_from_platoon=sim.start_from_platoon,
+                real_vehicle_as_reference=sim.real_vehicle_as_reference,
+                ep_len=sim.ep_len,
             ),
             max_episode_steps=ep_len,
         )
@@ -348,7 +359,7 @@ def simulate(
             is_leader=True if i == 0 else False,
             is_trailer=True if i == n - 1 else False,
             thread_limit=thread_limit,
-            accel_cnstr_tightening=0.05,
+            real_vehicle_as_reference=sim.real_vehicle_as_reference,
         )
         for i in range(n)
     ]

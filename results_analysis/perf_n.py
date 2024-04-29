@@ -13,25 +13,25 @@ types = [
     "cent",
     "decent",
     "seq",
-    "event_1",
+    # "event_1",
     "event_5",
     "event_10",
     "admm_5",
     "admm_20",
     "admm_50",
 ]
-seeds = [0]
+seeds = [0, 1, 2]
 leg = [
     "decent",
     "seq",
-    "event_1",
+    # "event_1",
     "event_5",
     "event_10",
     "admm_5",
     "admm_20",
     "admm_50",
 ]
-num_event_vars = 3
+num_event_vars = 2
 num_admm_vars = 3
 
 LT = 1
@@ -64,7 +64,7 @@ for type in types:
         viols[counter].append(0)
         for seed in seeds:
             with open(
-                f"data/{type}_task_2_n_{n}_N_{N}_seed_{seed}.pkl",
+                f"data/{type}_task_1_n_{n}_seed_{seed}.pkl",
                 "rb",
             ) as file:
                 X = pickle.load(file)
@@ -93,7 +93,7 @@ for type in types:
 # plotting params for all figs
 lw = 1.5  # line width
 ms = 5  # marker size
-mf = ["-x", "-o", "-o", ":v", ":v", ":v", "--s", "--s", "--s"]  # marker format
+mf = ["-x", "-o", "-o", ":v", ":v", "--s", "--s", "--s"]  # marker format
 
 # tracking cost as percentrage performance drop from centralized
 perf_drop = []
@@ -104,6 +104,12 @@ for i in range(1, counter):
             for j in range(len(track_costs[0]))
         ]
     )
+    # perf_drop.append(
+    #     [
+    #         (track_costs[i][j] - track_costs[0][j]) / counter
+    #         for j in range(len(track_costs[0]))
+    #     ]
+    # )
 # calculate time error bars
 error_lower = [
     [time_av[i][j] - time_min[i][j] for j in range(len(n_sw))] for i in range(counter)
@@ -194,6 +200,19 @@ axs[5].set_ylabel(r"$\#nodes$")
 axs[5].set_yscale("log")
 axs[5].set_xlabel("$n$")
 # save2tikz(plt.gcf())
+
+_, axs = plt.subplots(1, 1, constrained_layout=True, sharex=True)
+axs.set_yscale("log")
+for i in range(len(perf_drop)):
+    axs.plot(
+        n_sw,
+        np.asarray(perf_drop[i]).reshape(len(n_sw)),
+        mf[i + 1],
+        linewidth=lw,
+        markersize=ms,
+        color=f"C{i}",
+        markerfacecolor="none",
+    )
 
 _, axs = plt.subplots(3, 1, constrained_layout=True, sharex=True)
 for i in range(2):

@@ -45,7 +45,9 @@ class LocalMpcADMM(MpcMld):
         thread_limit: int | None = None,
         accel_cnstr_tightening: float = 0.0,
     ) -> None:
-        super().__init__(pwa_system, N, thread_limit=thread_limit, constrain_first_state=False)
+        super().__init__(
+            pwa_system, N, thread_limit=thread_limit, constrain_first_state=False
+        )
         self.rho = rho
         self.setup_cost_and_constraints(
             self.u,
@@ -250,7 +252,9 @@ class LocalMpcGear(LocalMpcADMM, MpcGear):
         thread_limit: int | None = None,
         accel_cnstr_tightening: float = 0.0,
     ) -> None:
-        MpcGear.__init__(self, system, N, thread_limit=thread_limit, constrain_first_state=False)
+        MpcGear.__init__(
+            self, system, N, thread_limit=thread_limit, constrain_first_state=False
+        )
         self.rho = rho
         self.setup_gears(N, system["F"], system["G"])
         self.setup_cost_and_constraints(
@@ -561,6 +565,8 @@ def simulate(
                 leader_trajectory=leader_trajectory,
                 spacing_policy=spacing_policy,
                 start_from_platoon=sim.start_from_platoon,
+                real_vehicle_as_reference=sim.real_vehicle_as_reference,
+                ep_len=sim.ep_len,
             ),
             max_episode_steps=ep_len,
         )

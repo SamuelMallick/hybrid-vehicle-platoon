@@ -32,6 +32,7 @@ class MpcGearCent(MpcMldCent, MpcMldCentDecup, MpcGear):
         quadratic_cost: bool = True,
         thread_limit: int | None = None,
         accel_cnstr_tightening: float = 0.0,
+        real_vehicle_as_reference: bool = False,
     ) -> None:
         self.n = n
         MpcMldCentDecup.__init__(
@@ -41,7 +42,11 @@ class MpcGearCent(MpcMldCent, MpcMldCentDecup, MpcGear):
         G = np.vstack([systems[i]["G"] for i in range(n)])
         self.setup_gears(N, F, G)
         self.setup_cost_and_constraints(
-            self.u_g, spacing_policy, quadratic_cost, accel_cnstr_tightening
+            self.u_g,
+            spacing_policy,
+            quadratic_cost,
+            accel_cnstr_tightening,
+            real_vehicle_as_reference,
         )
 
 
@@ -54,12 +59,15 @@ class MpcNonlinearGearCent(MpcMldCent, MpcNonlinearGear):
         spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
         quadratic_cost: bool = True,
         thread_limit: int | None = None,
+        real_vehicle_as_reference: bool = False,
     ) -> None:
         MpcNonlinearGear.__init__(self, nl_systems, N, thread_limit=thread_limit)
         F = block_diag(*[nl_systems[i]["F"] for i in range(n)])
         G = np.vstack([nl_systems[i]["G"] for i in range(n)])
         self.setup_gears(N, F, G)
-        self.setup_cost_and_constraints(self.u_g, spacing_policy, quadratic_cost)
+        self.setup_cost_and_constraints(
+            self.u_g, spacing_policy, quadratic_cost, real_vehicle_as_reference
+        )
 
 
 class TrackingCentralizedAgent(MldAgent):
@@ -115,6 +123,8 @@ def simulate(
                 leader_trajectory=leader_trajectory,
                 spacing_policy=spacing_policy,
                 start_from_platoon=sim.start_from_platoon,
+                real_vehicle_as_reference=sim.real_vehicle_as_reference,
+                ep_len=sim.ep_len,
             ),
             max_episode_steps=ep_len,
         )
@@ -128,7 +138,7 @@ def simulate(
             systems,
             spacing_policy=spacing_policy,
             thread_limit=thread_limit,
-            accel_cnstr_tightening=0,
+            real_vehicle_as_reference=sim.real_vehicle_as_reference,
         )
     elif sim.vehicle_model_type == "pwa_friction":
         mpc = MpcGearCent(
@@ -137,11 +147,16 @@ def simulate(
             systems,
             spacing_policy=spacing_policy,
             thread_limit=thread_limit,
-            accel_cnstr_tightening=0,
+            real_vehicle_as_reference=sim.real_vehicle_as_reference,
         )
     elif sim.vehicle_model_type == "nonlinear":
         mpc = MpcNonlinearGearCent(
-            n, N, systems, spacing_policy=spacing_policy, thread_limit=thread_limit
+            n,
+            N,
+            systems,
+            spacing_policy=spacing_policy,
+            thread_limit=thread_limit,
+            real_vehicle_as_reference=sim.real_vehicle_as_reference,
         )
     else:
         raise ValueError(f"{sim.vehicle_model_type} is not a valid vehicle model type.")
@@ -183,4 +198,4 @@ def simulate(
 
 
 if __name__ == "__main__":
-    simulate(Sim(), save=False, seed=1)
+    simulate(Sim(), save=True, seed=1)

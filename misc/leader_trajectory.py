@@ -67,3 +67,31 @@ class StopAndGoLeaderTrajectory(LeaderTrajectory):
                 v = self.vh if self.vf is None else self.vf
                 x[1, [k + 1]] = v
         return x
+
+
+class VolatileTrajectory(LeaderTrajectory):
+    """A leader trajectory for a volatile human driven vehicle."""
+
+    def __init__(self, p: float, trajectory_len: int, ts: float) -> None:
+        self.p0 = p
+        super().__init__(trajectory_len, ts)
+
+    def get_leader_trajectory(self) -> np.ndarray:
+        x = np.zeros((2, self.trajectory_len))
+        v = 30
+        x[:, [0]] = np.array([[self.p0], [v]])
+        for k in range(20):
+            x[:, [k + 1]] = np.array([[x[0, k] + self.ts * v], [v]])
+        v = 20
+        for k in range(20, 30):
+            x[:, [k + 1]] = np.array([[x[0, k] + self.ts * v], [v]])
+        for k in range(30, 50):
+            v = v + 1
+            x[:, [k + 1]] = np.array([[x[0, k] + self.ts * v], [v]])
+        v = 10
+        for k in range(50, 70):
+            x[:, [k + 1]] = np.array([[x[0, k] + self.ts * v], [v]])
+        v = 20
+        for k in range(70, self.trajectory_len - 1):
+            x[:, [k + 1]] = np.array([[x[0, k] + self.ts * v], [v]])
+        return x

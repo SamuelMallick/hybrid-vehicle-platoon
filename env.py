@@ -37,6 +37,7 @@ class PlatoonEnv(gym.Env[npt.NDArray[np.floating], npt.NDArray[np.floating]]):
         d_safe: float = 25,
         start_from_platoon: bool = False,
         quadratic_cost: bool = True,
+        real_vehicle_as_reference: bool = False,
     ) -> None:
         super().__init__()
 
@@ -48,6 +49,7 @@ class PlatoonEnv(gym.Env[npt.NDArray[np.floating], npt.NDArray[np.floating]]):
         self.start_from_platoon = start_from_platoon
         self.leader_trajectory = leader_trajectory
         self.spacing_policy = spacing_policy
+        self.real_vehicle_as_reference = real_vehicle_as_reference
         if quadratic_cost:
             self.cost_func = self.quad_cost
         else:
@@ -92,9 +94,14 @@ class PlatoonEnv(gym.Env[npt.NDArray[np.floating], npt.NDArray[np.floating]]):
 
         else:  # if not random, the vehicles start in perfect platoon with leader on trajectory
             for i in range(self.n):
-                self.x[i * self.nx_l : self.nx_l * (i + 1), :] = self.leader_x[
-                    :, [0]
-                ] + i * self.spacing_policy.spacing(self.leader_x[:, [0]])
+                if not self.real_vehicle_as_reference:
+                    self.x[i * self.nx_l : self.nx_l * (i + 1), :] = self.leader_x[
+                        :, [0]
+                    ] + i * self.spacing_policy.spacing(self.leader_x[:, [0]])
+                else:
+                    self.x[i * self.nx_l : self.nx_l * (i + 1), :] = self.leader_x[
+                        :, [0]
+                    ] + (i + 1) * self.spacing_policy.spacing(self.leader_x[:, [0]])
 
         self.step_counter = 0
         self.viol_counter.append(np.zeros(self.ep_len))
@@ -124,9 +131,17 @@ class PlatoonEnv(gym.Env[npt.NDArray[np.floating], npt.NDArray[np.floating]]):
 
         cost = 0
         # tracking cost
-        cost += self.cost_func(
-            x[0] - self.leader_x[:, [self.step_counter]], self.Q_x
-        )  # first vehicle tracking leader trajectory
+        if not self.real_vehicle_as_reference:
+            cost += self.cost_func(
+                x[0] - self.leader_x[:, [self.step_counter]], self.Q_x
+            )  # first vehicle tracking leader trajectory
+        else:
+            cost += self.cost_func(
+                x[0]
+                - self.leader_x[:, [self.step_counter]]
+                - (self.spacing_policy.spacing(x[0])),
+                self.Q_x,
+            )
         cost += sum(
             [
                 self.cost_func(
@@ -142,7 +157,14 @@ class PlatoonEnv(gym.Env[npt.NDArray[np.floating], npt.NDArray[np.floating]]):
         cost += sum([self.cost_func(u[i] - u_p[i], self.Q_du) for i in range(self.n)])
 
         # check for constraint violations
-        if any([x[i][0, 0] - x[i + 1][0, 0] < self.d_safe for i in range(self.n - 1)]):
+        if (
+            self.real_vehicle_as_reference
+            and self.leader_x[0, self.step_counter] - x[0][0, 0] < self.d_safe
+        ):
+            self.viol_counter[-1][self.step_counter] = 100
+        elif any(
+            [x[i][0, 0] - x[i + 1][0, 0] < self.d_safe for i in range(self.n - 1)]
+        ):
             self.viol_counter[-1][self.step_counter] = 100
 
         self.previous_action = action

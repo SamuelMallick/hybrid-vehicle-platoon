@@ -23,7 +23,9 @@ class MpcGear(MpcMld):
             Prediction horizon length."""
 
         # init the PWA system - MLD constraints and binary variables for PWA dynamics
-        super().__init__(system, N, thread_limit=thread_limit, constrain_first_state=False)
+        super().__init__(
+            system, N, thread_limit=thread_limit, constrain_first_state=False
+        )
 
     def setup_gears(self, N: int, F: np.ndarray, G: np.ndarray):
         """Set up constraints in mixed-integer problem for gears."""
