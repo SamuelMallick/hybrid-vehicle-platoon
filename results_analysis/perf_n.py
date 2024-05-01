@@ -20,7 +20,7 @@ types = [
     "admm_20",
     "admm_50",
 ]
-seeds = [0, 1, 2]
+seeds = [0, 1]
 leg = [
     "decent",
     "seq",
@@ -38,7 +38,7 @@ LT = 1
 HOM = True
 DG = False
 Q = True
-n_sw = [i for i in range(2, 8)]
+n_sw = [i for i in range(2, 9)]
 N = 8
 
 track_costs = []
@@ -98,18 +98,18 @@ mf = ["-x", "-o", "-o", ":v", ":v", "--s", "--s", "--s"]  # marker format
 # tracking cost as percentrage performance drop from centralized
 perf_drop = []
 for i in range(1, counter):
-    perf_drop.append(
-        [
-            100 * (track_costs[i][j] - track_costs[0][j]) / track_costs[i][j]
-            for j in range(len(track_costs[0]))
-        ]
-    )
     # perf_drop.append(
     #     [
-    #         (track_costs[i][j] - track_costs[0][j]) / counter
+    #         100 * (track_costs[i][j] - track_costs[0][j]) / track_costs[i][j]
     #         for j in range(len(track_costs[0]))
     #     ]
     # )
+    perf_drop.append(
+        [
+            (track_costs[i][j] - track_costs[0][j]) / (counter * track_costs[i][j])
+            for j in range(len(track_costs[0]))
+        ]
+    )
 # calculate time error bars
 error_lower = [
     [time_av[i][j] - time_min[i][j] for j in range(len(n_sw))] for i in range(counter)

@@ -10,15 +10,15 @@ plt.rc("font", size=14)
 plt.style.use("bmh")
 
 nx_l = 2
-plot_len = 100
-name = "seq"
-n = 6
+plot_len = 200
+name = "cent"
+n = 8
 N = 8
-seed = 0
+seed = 1
 
 with open(
-    # f"data/{name}_task_2_n_{n}_seed_{seed}.pkl",
-    "seq_default_n_6_seed_1.pkl",
+    f"data/{name}_task_2_n_{n}_seed_{seed}.pkl",
+    # "seq_default_n_6_seed_1.pkl",
     "rb",
 ) as file:
     X = pickle.load(file)
