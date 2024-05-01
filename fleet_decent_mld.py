@@ -4,7 +4,6 @@ import gurobipy as gp
 import numpy as np
 from dmpcpwa.agents.mld_agent import MldAgent
 from dmpcpwa.mpc.mpc_mld import MpcMld
-from gymnasium import Env
 from gymnasium.wrappers import TimeLimit
 from mpcrl.wrappers.envs import MonitorEpisodes
 
@@ -222,6 +221,7 @@ class TrackingDecentMldCoordinator(MldAgent):
         N: int,
         leader_x: np.ndarray,
         ts: float,
+        velocity_estimator: bool = False,
     ) -> None:
         super().__init__(local_mpcs[0])  # just to handle agent inititalisation
 
@@ -230,6 +230,7 @@ class TrackingDecentMldCoordinator(MldAgent):
         self.ts = ts
         self.N = N
         self.leader_x = leader_x
+        self.velocity_estimator = velocity_estimator
         self.nx_l = Vehicle.nx_l
         self.nu_l = Vehicle.nu_l
         self.agents: list[MldAgent] = []
@@ -255,7 +256,7 @@ class TrackingDecentMldCoordinator(MldAgent):
 
     # current state of car to be tracked is observed and propogated forward
     # to be the prediction
-    def on_timestep_end(self, env: Env, episode: int, timestep: int) -> None:
+    def on_timestep_end(self, env: PlatoonEnv, episode: int, timestep: int) -> None:
         self.observe_states(env, timestep)
 
         # take the maximum solve time and maximum node count, as all agents are assumed to
@@ -266,43 +267,83 @@ class TrackingDecentMldCoordinator(MldAgent):
         self.node_counts[env.step_counter - 1, :] = max(agent_node_counts)
         return super().on_timestep_end(env, episode, timestep)
 
-    def on_episode_start(self, env: Env, episode: int, state) -> None:
+    def on_episode_start(self, env: PlatoonEnv, episode: int, state) -> None:
         self.observe_states(env, timestep=0)
         return super().on_episode_start(env, episode, state)
 
-    def observe_states(self, env, timestep):
+    def observe_states(self, env: PlatoonEnv, timestep):
+        if self.velocity_estimator:
+            x_p = env.get_previous_state()
         for i in range(self.n):
             if i == 0:  # lead car
-                x_pred_front = self.extrapolate_position(
-                    self.leader_x[0, [timestep]], self.leader_x[1, [timestep]]
+                x_pred_front = self.extrapolate_position_constant_vel(
+                    self.leader_x[0, timestep], self.leader_x[1, timestep]
                 )
-                x_pred_back = self.extrapolate_position(
-                    env.x[self.nx_l * (i + 1), :], env.x[self.nx_l * (i + 1) + 1, :]
-                )
+                if self.velocity_estimator:
+                    x_pred_back = self.extrapolate_position_two_point_estimator(
+                        env.x[self.nx_l * (i + 1)],
+                        env.x[self.nx_l * (i + 1) + 1],
+                        x_p[self.nx_l * (i + 1) + 1],
+                    )
+                else:
+                    x_pred_back = self.extrapolate_position_constant_vel(
+                        env.x[self.nx_l * (i + 1)], env.x[self.nx_l * (i + 1) + 1]
+                    )
                 self.agents[i].mpc.set_x_front(x_pred_front)
                 self.agents[i].mpc.set_x_back(x_pred_back)
             elif i == self.n - 1:  # last car
-                x_pred_front = self.extrapolate_position(
-                    env.x[self.nx_l * (i - 1), :], env.x[self.nx_l * (i - 1) + 1, :]
-                )
+                if self.velocity_estimator:
+                    x_pred_front = self.extrapolate_position_two_point_estimator(
+                        env.x[self.nx_l * (i - 1)],
+                        env.x[self.nx_l * (i - 1) + 1],
+                        x_p[self.nx_l * (i - 1) + 1],
+                    )
+                else:
+                    x_pred_front = self.extrapolate_position_constant_vel(
+                        env.x[self.nx_l * (i - 1)], env.x[self.nx_l * (i - 1) + 1]
+                    )
                 self.agents[i].mpc.set_x_front(x_pred_front)
             else:
-                x_pred_front = self.extrapolate_position(
-                    env.x[self.nx_l * (i - 1), :], env.x[self.nx_l * (i - 1) + 1, :]
-                )
-                x_pred_back = self.extrapolate_position(
-                    env.x[self.nx_l * (i + 1), :], env.x[self.nx_l * (i + 1) + 1, :]
-                )
+                if self.velocity_estimator:
+                    x_pred_front = self.extrapolate_position_two_point_estimator(
+                        env.x[self.nx_l * (i - 1)],
+                        env.x[self.nx_l * (i - 1) + 1],
+                        x_p[self.nx_l * (i - 1) + 1],
+                    )
+                    x_pred_back = self.extrapolate_position_two_point_estimator(
+                        env.x[self.nx_l * (i + 1)],
+                        env.x[self.nx_l * (i + 1) + 1],
+                        x_p[self.nx_l * (i + 1) + 1],
+                    )
+                else:
+                    x_pred_front = self.extrapolate_position_constant_vel(
+                        env.x[self.nx_l * (i - 1)], env.x[self.nx_l * (i - 1) + 1]
+                    )
+                    x_pred_back = self.extrapolate_position_constant_vel(
+                        env.x[self.nx_l * (i + 1)], env.x[self.nx_l * (i + 1) + 1]
+                    )
                 self.agents[i].mpc.set_x_front(x_pred_front)
                 self.agents[i].mpc.set_x_back(x_pred_back)
 
-    def extrapolate_position(self, initial_pos, initial_vel):
+    def extrapolate_position_constant_vel(self, initial_pos: float, initial_vel: float):
         x_pred = np.zeros((self.nx_l, self.N + 1))
         x_pred[0, [0]] = initial_pos
         x_pred[1, [0]] = initial_vel
         for k in range(self.N):
             x_pred[0, [k + 1]] = x_pred[0, [k]] + self.ts * x_pred[1, [k]]
             x_pred[1, [k + 1]] = x_pred[1, [k]]
+        return x_pred
+
+    def extrapolate_position_two_point_estimator(
+        self, initial_pos: float, initial_vel: float, previous_vel: float
+    ):
+        x_pred = np.zeros((self.nx_l, self.N + 1))
+        x_pred[0, [0]] = initial_pos
+        x_pred[1, [0]] = initial_vel
+        dv = initial_vel - previous_vel
+        for k in range(self.N):
+            x_pred[0, [k + 1]] = x_pred[0, [k]] + self.ts * x_pred[1, [k]]
+            x_pred[1, [k + 1]] = x_pred[1, [k]] + dv
         return x_pred
 
 
@@ -312,6 +353,7 @@ def simulate(
     plot: bool = True,
     seed: int = 2,
     thread_limit: int | None = None,
+    velocity_estimator: bool = False,
 ):
     n = sim.n  # num cars
     N = sim.N  # controller horizon
@@ -365,7 +407,12 @@ def simulate(
     ]
     # agent
     agent = TrackingDecentMldCoordinator(
-        mpcs, ep_len=ep_len, N=N, leader_x=leader_x, ts=ts
+        mpcs,
+        ep_len=ep_len,
+        N=N,
+        leader_x=leader_x,
+        ts=ts,
+        velocity_estimator=velocity_estimator,
     )
 
     agent.evaluate(env=env, episodes=1, seed=seed)
@@ -388,7 +435,7 @@ def simulate(
 
     if save:
         with open(
-            f"decent_{sim.id}_seed_{seed}" + ".pkl",
+            f"decent_vest_{velocity_estimator}_{sim.id}_seed_{seed}" + ".pkl",
             "wb",
         ) as file:
             pickle.dump(X, file)
@@ -401,4 +448,4 @@ def simulate(
 
 
 if __name__ == "__main__":
-    simulate(Sim(), save=False, seed=1)
+    simulate(Sim(), save=False, seed=1, velocity_estimator=False)

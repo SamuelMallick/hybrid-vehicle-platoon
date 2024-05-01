@@ -58,6 +58,7 @@ class PlatoonEnv(gym.Env[npt.NDArray[np.floating], npt.NDArray[np.floating]]):
         self.previous_action: np.ndarray | None = (
             None  # store previous action to penalise variation
         )
+        self.previous_state: np.ndarray | None = None  # store previous state
 
     def reset(
         self,
@@ -168,6 +169,7 @@ class PlatoonEnv(gym.Env[npt.NDArray[np.floating], npt.NDArray[np.floating]]):
             self.viol_counter[-1][self.step_counter] = 100
 
         self.previous_action = action
+        self.previous_state = state
         return cost
 
     def step(
@@ -201,3 +203,10 @@ class PlatoonEnv(gym.Env[npt.NDArray[np.floating], npt.NDArray[np.floating]]):
         self.step_counter += 1
         print(f"step {self.step_counter}")
         return x_new, r, False, False, {}
+
+    def get_state(self):
+        return self.x
+
+    def get_previous_state(self):
+        """Returns state of platoon at previous time step. Uses current state for first time-step."""
+        return self.previous_state if self.previous_state is not None else self.x
