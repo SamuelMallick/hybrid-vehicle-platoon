@@ -29,6 +29,7 @@ class MpcGearCent(MpcMldCent, MpcMldCentDecup, MpcGear):
         N: int,
         systems: list[dict],
         spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
+        leader_index: int = 0,
         quadratic_cost: bool = True,
         thread_limit: int | None = None,
         accel_cnstr_tightening: float = 0.0,
@@ -44,6 +45,7 @@ class MpcGearCent(MpcMldCent, MpcMldCentDecup, MpcGear):
         self.setup_cost_and_constraints(
             self.u_g,
             spacing_policy,
+            leader_index,
             quadratic_cost,
             accel_cnstr_tightening,
             real_vehicle_as_reference,
@@ -57,6 +59,7 @@ class MpcNonlinearGearCent(MpcMldCent, MpcNonlinearGear):
         N: int,
         nl_systems: list[dict],
         spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
+        leader_index: int = 0,
         quadratic_cost: bool = True,
         thread_limit: int | None = None,
         real_vehicle_as_reference: bool = False,
@@ -66,7 +69,7 @@ class MpcNonlinearGearCent(MpcMldCent, MpcNonlinearGear):
         G = np.vstack([nl_systems[i]["G"] for i in range(n)])
         self.setup_gears(N, F, G)
         self.setup_cost_and_constraints(
-            self.u_g, spacing_policy, quadratic_cost, real_vehicle_as_reference
+            self.u_g, spacing_policy, leader_index, quadratic_cost, real_vehicle_as_reference
         )
 
 
@@ -100,6 +103,7 @@ def simulate(
     plot: bool = True,
     seed: int = 1,
     thread_limit: int | None = None,
+    leader_index = 0,
 ):
     n = sim.n  # num cars
     N = sim.N  # controller horizon
@@ -125,6 +129,7 @@ def simulate(
                 start_from_platoon=sim.start_from_platoon,
                 real_vehicle_as_reference=sim.real_vehicle_as_reference,
                 ep_len=sim.ep_len,
+                leader_index=leader_index
             ),
             max_episode_steps=ep_len,
         )
@@ -137,6 +142,7 @@ def simulate(
             N,
             systems,
             spacing_policy=spacing_policy,
+            leader_index=leader_index,
             thread_limit=thread_limit,
             real_vehicle_as_reference=sim.real_vehicle_as_reference,
         )
@@ -146,6 +152,7 @@ def simulate(
             N,
             systems,
             spacing_policy=spacing_policy,
+            leader_index=leader_index,
             thread_limit=thread_limit,
             real_vehicle_as_reference=sim.real_vehicle_as_reference,
         )
@@ -155,6 +162,7 @@ def simulate(
             N,
             systems,
             spacing_policy=spacing_policy,
+            leader_index=leader_index,
             thread_limit=thread_limit,
             real_vehicle_as_reference=sim.real_vehicle_as_reference,
         )
@@ -198,4 +206,4 @@ def simulate(
 
 
 if __name__ == "__main__":
-    simulate(Sim(), save=False, seed=1)
+    simulate(Sim(), save=False, seed=1, leader_index=1)

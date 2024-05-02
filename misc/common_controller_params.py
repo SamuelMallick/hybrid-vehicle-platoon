@@ -27,7 +27,7 @@ class Sim:
     vehicle_model_type: Literal["nonlinear", "pwa_friction", "pwa_gear"] = "pwa_gear"
     start_from_platoon: bool = False
     quadratic_cost: bool = True
-    n = 8
+    n = 4
     N = 6
     ep_len = 150
     # spacing_policy = ConstantSpacingPolicy(50)
