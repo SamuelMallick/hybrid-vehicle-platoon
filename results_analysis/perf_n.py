@@ -21,7 +21,8 @@ types = [
     "admm_20",
     # "admm_50",
 ]
-seeds = [i for i in range(7)] + [i for i in range(50, 57)] + [i for i in range(100, 107)]
+seeds = [i for i in range(150)]
+# seeds = [i for i in range(7)] + [i for i in range(50, 57)] + [i for i in range(100, 107)]
 leg = [
     "decent",
     "seq",
@@ -62,24 +63,27 @@ for type in types:
         nodes[counter].append([])
         viols[counter].append([])
         for seed in seeds:
-            with open(
-                f"data/{type}_task_2_n_{n}_N_{N}_seed_{seed}.pkl",
-                "rb",
-            ) as file:
-                X = pickle.load(file)
-                U = pickle.load(file)
-                R = pickle.load(file)
-                solve_times = pickle.load(file)
-                node_counts = pickle.load(file)
-                violations = pickle.load(file)
-                leader_state = pickle.load(file)
+            try:
+                with open(
+                    f"data/{type}_task_2_n_{n}_N_{N}_seed_{seed}.pkl",
+                    "rb",
+                ) as file:
+                    X = pickle.load(file)
+                    U = pickle.load(file)
+                    R = pickle.load(file)
+                    solve_times = pickle.load(file)
+                    node_counts = pickle.load(file)
+                    violations = pickle.load(file)
+                    leader_state = pickle.load(file)
 
-            track_costs[counter][-1].append(sum(R)[0,0])
-            time_min[counter][-1].append(min(solve_times)[0])
-            time_max[counter][-1].append(max(solve_times)[0])
-            time_av[counter][-1].append(sum(solve_times)[0] / len(solve_times))
-            nodes[counter][-1].append(max(node_counts)[0])
-            viols[counter][-1].append(sum(violations) / 100)
+                track_costs[counter][-1].append(sum(R)[0,0])
+                time_min[counter][-1].append(min(solve_times)[0])
+                time_max[counter][-1].append(max(solve_times)[0])
+                time_av[counter][-1].append(sum(solve_times)[0] / len(solve_times))
+                nodes[counter][-1].append(max(node_counts)[0])
+                viols[counter][-1].append(sum(violations) / 100)
+            except:
+                print(f'no seed {seed}')
         track_costs[counter][-1] = statistics.harmonic_mean(track_costs[counter][-1])
         time_min[counter][-1] = statistics.harmonic_mean(time_min[counter][-1])
         time_max[counter][-1] = statistics.harmonic_mean(time_max[counter][-1])
@@ -103,18 +107,18 @@ for i in range(1, counter):
     #         for j in range(len(track_costs[0]))
     #     ]
     # )
-    # perf_drop.append(
-    #     [
-    #         (track_costs[i][j] - track_costs[0][j]) / ((j+2) * track_costs[0][j])
-    #         for j in range(len(track_costs[0]))
-    #     ]
-    # )
     perf_drop.append(
         [
-            (track_costs[i][j] - track_costs[0][j]) / (j+2)
+            (track_costs[i][j] - track_costs[0][j])
             for j in range(len(track_costs[0]))
         ]
     )
+    # perf_drop.append(
+    #     [
+    #         (track_costs[i][j] - track_costs[0][j]) / (j+2)
+    #         for j in range(len(track_costs[0]))
+    #     ]
+    # )
 # calculate time error bars
 error_lower = [
     [time_av[i][j] - time_min[i][j] for j in range(len(n_sw))] for i in range(counter)
