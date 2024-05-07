@@ -298,36 +298,55 @@ class TrackingSequentialMldCoordinator(MldAgent):
     def get_control(self, state):
         x_l = np.split(state, self.n, axis=0)  # split into local state components
         u = [None] * self.n
-        if self.forwards:
-            indexs = [i for i in range(self.n)]
-        else:
-            indexs = [self.n - i - 1 for i in range(self.n)]
-        for counter, idx in enumerate(indexs):
-            # get predicted state of car in front
-            if idx != 0:  # first car has no car in front
-                x_pred_ahead = self.agents[idx - 1].get_predicted_state(shifted=False if self.forwards else True)
+
+        # first leader
+        if self.leader_index != 0:
+            x_pred_ahead = self.agents[self.leader_index - 1].get_predicted_state(shifted=True)
+            if x_pred_ahead is not None:
+                x_pred_ahead[0, -1] = (
+                    x_pred_ahead[0, -2] + self.ts * x_pred_ahead[1, -1]
+                )
+                self.agents[self.leader_index].mpc.set_x_front(x_pred_ahead)
+        if self.leader_index != self.n - 1:
+            x_pred_behind = self.agents[self.leader_index + 1].get_predicted_state(shifted=True)
+            if   (
+                x_pred_behind is not None
+            ):
+                x_pred_behind[0, -1] = (
+                    x_pred_behind[0, -2] + self.ts * x_pred_behind[1, -1]
+                )
+                self.agents[self.leader_index].mpc.set_x_back(x_pred_behind)
+        u[self.leader_index] = self.agents[self.leader_index].get_control(x_l[self.leader_index])
+
+        # vehicles in front of leader
+        for i in [self.leader_index-i-1 for i in range(0, self.leader_index)]:
+            if i != 0:
+                x_pred_ahead = self.agents[i - 1].get_predicted_state(shifted=True)
                 if x_pred_ahead is not None:
-                    if not self.forwards:
-                        x_pred_ahead[0, -1] = (
-                            x_pred_ahead[0, -2] + self.ts * x_pred_ahead[1, -1]
-                        )
-                    else:
-                        self.agents[idx].mpc.set_x_front(x_pred_ahead)
+                    x_pred_ahead[0, -1] = (
+                        x_pred_ahead[0, -2] + self.ts * x_pred_ahead[1, -1]
+                    )
+                    self.agents[i].mpc.set_x_front(x_pred_ahead)
+            x_pred_behind = self.agents[i + 1].get_predicted_state(shifted=False)
+            self.agents[i].mpc.set_x_back(x_pred_behind)
+            
+            u[i] = self.agents[i].get_control(x_l[i])
+        
+        # vehicles behind leader
+        for i in range(self.leader_index+1, self.n):
+            x_pred_ahead = self.agents[i - 1].get_predicted_state(shifted=False)
+            self.agents[i].mpc.set_x_front(x_pred_ahead)
 
-            # get predicted state of car behind
-            if idx != self.n - 1:  # last car has no car behind
-                x_pred_behind = self.agents[idx + 1].get_predicted_state(shifted=True if self.forwards else False)
-                if   (
-                    x_pred_behind is not None
-                ):  # it will be None if first iteration and car behind has no saved solution
-                    # apply a smart shifting, where the final position assumed a constant velocity
-                    if self.forwards:
-                        x_pred_behind[0, -1] = (
-                            x_pred_behind[0, -2] + self.ts * x_pred_behind[1, -1]
-                        )
-                    self.agents[idx].mpc.set_x_back(x_pred_behind)
+            if i != self.n-1:
+                x_pred_behind = self.agents[i + 1].get_predicted_state(shifted=True)
+                if x_pred_behind is not None:
+                    x_pred_behind[0, -1] = (
+                        x_pred_behind[0, -2] + self.ts * x_pred_behind[1, -1]
+                    )
+                    self.agents[i].mpc.set_x_back(x_pred_behind)
+            
+            u[i] = self.agents[i].get_control(x_l[i])
 
-            u[idx] = self.agents[idx].get_control(x_l[idx])
         if u[0].shape[0] > self.nu_l:  # includes gear choices
             # stack the continuous control at the front and the discrete at the back
             return np.vstack(
@@ -442,7 +461,7 @@ def simulate(
     ]
     # agent
     agent = TrackingSequentialMldCoordinator(
-        mpcs, ep_len=ep_len, N=N, leader_x=leader_x, ts=ts, leader_index=leader_index
+        mpcs, ep_len=ep_len, N=N, leader_x=leader_x, ts=ts, leader_index=leader_index, order_forwards=order_forwards
     )
 
     agent.evaluate(env=env, episodes=1, seed=seed)
@@ -478,4 +497,4 @@ def simulate(
 
 
 if __name__ == "__main__":
-    simulate(Sim(), save=False, seed=1, leader_index=3, order_forwards = False)
+    simulate(Sim(), save=False, seed=1, leader_index=2)

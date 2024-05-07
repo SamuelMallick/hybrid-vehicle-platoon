@@ -66,7 +66,7 @@ class Sim_n_task_2(Sim):
     def __init__(self, n: int, seed: int) -> None:
         super().__init__()
         self.n = n
-        self.id = f"task_2_n_{n}_N_{self.N}"
+        self.id = f"task_3_n_{n}_N_{self.N}"
         self.spacing_policy = ConstantTimePolicy(10, 3)
         self.leader_trajectory = StopAndGoLeaderTrajectory(
             p=3000,
