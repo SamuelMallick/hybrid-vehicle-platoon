@@ -35,6 +35,7 @@ class LocalMpcMld(MpcMld):
         pwa_system: dict,
         spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
         quadratic_cost: bool = True,
+        is_front: bool = False,
         is_leader: bool = False,
         is_trailer: bool = False,
         thread_limit: int | None = None,
@@ -49,6 +50,7 @@ class LocalMpcMld(MpcMld):
             self.u,
             spacing_policy,
             quadratic_cost,
+            is_front,
             is_leader,
             is_trailer,
             accel_cnstr_tightening,
@@ -60,6 +62,7 @@ class LocalMpcMld(MpcMld):
         u,
         spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
         quadratic_cost: bool = True,
+        is_front: bool = False,
         is_leader=False,
         is_trailer=False,
         accel_cnstr_tightening: float = 0.0,
@@ -81,6 +84,10 @@ class LocalMpcMld(MpcMld):
         self.x_back = self.mpc_model.addMVar(
             (nx_l, self.N + 1), lb=-1e6, ub=1e6, name="x_back"
         )
+        if is_leader:
+            self.leader_x = self.mpc_model.addMVar(
+                (nx_l, self.N + 1), lb=-1e6, ub=1e6, name="leader_x"
+            )
         # slack vars for constraints with prec and succ vehicles
         self.s_front = self.mpc_model.addMVar(
             (self.N + 1), lb=0, ub=float("inf"), name="s_front"
@@ -91,7 +98,7 @@ class LocalMpcMld(MpcMld):
 
         # setting these bounds to zero removes the slack var, as leader and trailer
         # dont have cars in front or behind respectively
-        if is_leader and not real_vehicle_as_reference:
+        if is_front:
             self.s_front.ub = 0
         if is_trailer:
             self.s_back.ub = 0
@@ -99,14 +106,7 @@ class LocalMpcMld(MpcMld):
         # cost func
         cost = 0
         # tracking cost
-        if is_leader and not real_vehicle_as_reference:
-            cost += sum(
-                [
-                    self.cost_func(self.x[:, [k]] - self.x_front[:, [k]], self.Q_x)
-                    for k in range(self.N + 1)
-                ]
-            )
-        else:
+        if not is_front and not is_leader:
             cost += sum(
                 [
                     self.cost_func(
@@ -118,6 +118,33 @@ class LocalMpcMld(MpcMld):
                     for k in range(self.N + 1)
                 ]
             )
+        if not is_trailer and not is_leader:
+            cost += sum(
+                [
+                    self.cost_func(
+                        self.x_back[:, [k]]
+                        - self.x[:, [k]]
+                        - spacing_policy.spacing(self.x_back[:, [k]]),
+                        self.Q_x,
+                    )
+                    for k in range(self.N + 1)
+                ]
+            )
+        if is_leader:
+            if not real_vehicle_as_reference:
+                cost += sum(
+                    [
+                        self.cost_func(self.x[:, [k]] - self.leader_x[:, [k]], self.Q_x)
+                        for k in range(self.N + 1)
+                    ]
+                )
+            else:
+                cost += sum(
+                    [
+                        self.cost_func(self.x[:, [k]] - self.leader_x[:, [k]]- spacing_policy.spacing(self.x[:, [k]]), self.Q_x)
+                        for k in range(self.N + 1)
+                    ]
+                )
         # control effort cost
         cost += sum([self.cost_func(u[:, [k]], self.Q_u) for k in range(self.N)])
         # control variation cost
@@ -155,7 +182,7 @@ class LocalMpcMld(MpcMld):
         )
 
         # safe distance constraints
-        if not is_leader or real_vehicle_as_reference:
+        if not is_front:
             self.mpc_model.addConstrs(
                 (
                     self.x[0, [k]] - self.s_front[[k]]
@@ -173,6 +200,11 @@ class LocalMpcMld(MpcMld):
                 ),
                 name="safe_back",
             )
+
+    def set_leader_x(self, leader_x):
+        for k in range(self.N + 1):
+            self.leader_x[:, [k]].lb = leader_x[:, [k]]
+            self.leader_x[:, [k]].ub = leader_x[:, [k]]
 
     def set_x_front(self, x_front):
         for k in range(self.N + 1):
@@ -192,6 +224,7 @@ class LocalMpcGear(LocalMpcMld, MpcGear):
         pwa_system: dict,
         spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
         quadratic_cost: bool = True,
+        is_front: bool = False,
         is_leader: bool = False,
         is_trailer: bool = False,
         thread_limit: int | None = None,
@@ -206,6 +239,7 @@ class LocalMpcGear(LocalMpcMld, MpcGear):
             self.u_g,
             spacing_policy,
             quadratic_cost,
+            is_front,
             is_leader,
             is_trailer,
             accel_cnstr_tightening,
@@ -221,6 +255,7 @@ class TrackingDecentMldCoordinator(MldAgent):
         N: int,
         leader_x: np.ndarray,
         ts: float,
+        leader_index: int = 0,
         velocity_estimator: bool = False,
     ) -> None:
         super().__init__(local_mpcs[0])  # just to handle agent inititalisation
@@ -230,6 +265,7 @@ class TrackingDecentMldCoordinator(MldAgent):
         self.ts = ts
         self.N = N
         self.leader_x = leader_x
+        self.leader_index = leader_index
         self.velocity_estimator = velocity_estimator
         self.nx_l = Vehicle.nx_l
         self.nu_l = Vehicle.nu_l
@@ -257,6 +293,8 @@ class TrackingDecentMldCoordinator(MldAgent):
     # current state of car to be tracked is observed and propogated forward
     # to be the prediction
     def on_timestep_end(self, env: PlatoonEnv, episode: int, timestep: int) -> None:
+        x_goal = self.leader_x[:, timestep : timestep + self.N + 1]
+        self.agents[self.leader_index].mpc.set_leader_x(x_goal)
         self.observe_states(env, timestep)
 
         # take the maximum solve time and maximum node count, as all agents are assumed to
@@ -268,6 +306,8 @@ class TrackingDecentMldCoordinator(MldAgent):
         return super().on_timestep_end(env, episode, timestep)
 
     def on_episode_start(self, env: PlatoonEnv, episode: int, state) -> None:
+        x_goal = self.leader_x[:, 0 : self.N + 1]
+        self.agents[self.leader_index].mpc.set_leader_x(x_goal)
         self.observe_states(env, timestep=0)
         return super().on_episode_start(env, episode, state)
 
@@ -276,9 +316,6 @@ class TrackingDecentMldCoordinator(MldAgent):
             x_p = env.get_previous_state()
         for i in range(self.n):
             if i == 0:  # lead car
-                x_pred_front = self.extrapolate_position_constant_vel(
-                    self.leader_x[0, timestep], self.leader_x[1, timestep]
-                )
                 if self.velocity_estimator:
                     x_pred_back = self.extrapolate_position_two_point_estimator(
                         env.x[self.nx_l * (i + 1)],
@@ -289,7 +326,6 @@ class TrackingDecentMldCoordinator(MldAgent):
                     x_pred_back = self.extrapolate_position_constant_vel(
                         env.x[self.nx_l * (i + 1)], env.x[self.nx_l * (i + 1) + 1]
                     )
-                self.agents[i].mpc.set_x_front(x_pred_front)
                 self.agents[i].mpc.set_x_back(x_pred_back)
             elif i == self.n - 1:  # last car
                 if self.velocity_estimator:
@@ -354,6 +390,7 @@ def simulate(
     seed: int = 2,
     thread_limit: int | None = None,
     velocity_estimator: bool = False,
+    leader_index: int = 0
 ):
     n = sim.n  # num cars
     N = sim.N  # controller horizon
@@ -379,6 +416,7 @@ def simulate(
                 start_from_platoon=sim.start_from_platoon,
                 real_vehicle_as_reference=sim.real_vehicle_as_reference,
                 ep_len=sim.ep_len,
+                leader_index=leader_index
             ),
             max_episode_steps=ep_len,
         )
@@ -398,7 +436,8 @@ def simulate(
             N,
             systems[i],
             spacing_policy,
-            is_leader=True if i == 0 else False,
+            is_front=True if i == 0 else False,
+            is_leader=True if i == leader_index else False,
             is_trailer=True if i == n - 1 else False,
             thread_limit=thread_limit,
             real_vehicle_as_reference=sim.real_vehicle_as_reference,
@@ -413,6 +452,7 @@ def simulate(
         leader_x=leader_x,
         ts=ts,
         velocity_estimator=velocity_estimator,
+        leader_index=leader_index
     )
 
     agent.evaluate(env=env, episodes=1, seed=seed)
@@ -448,4 +488,4 @@ def simulate(
 
 
 if __name__ == "__main__":
-    simulate(Sim(), save=False, seed=1, velocity_estimator=False)
+    simulate(Sim(), save=False, seed=1, velocity_estimator=False, leader_index=5)
