@@ -40,6 +40,7 @@ class LocalMpcADMM(MpcMld):
         rho: float,
         spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
         quadratic_cost: bool = True,
+        is_front: bool = False,
         is_leader: bool = False,
         is_trailer: bool = False,
         thread_limit: int | None = None,
@@ -53,6 +54,7 @@ class LocalMpcADMM(MpcMld):
             self.u,
             spacing_policy,
             quadratic_cost,
+            is_front,
             is_leader,
             is_trailer,
             accel_cnstr_tightening,
@@ -63,6 +65,7 @@ class LocalMpcADMM(MpcMld):
         u,
         spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
         quadratic_cost: bool = True,
+        is_front: bool = False,
         is_leader=False,
         is_trailer=False,
         accel_cnstr_tightening: float = 0.0,
@@ -77,12 +80,18 @@ class LocalMpcADMM(MpcMld):
         Vehicle.nu_l
 
         # copies of states for prec and succ vehicle
-        self.x_front = self.mpc_model.addMVar(
-            (nx_l, self.N + 1), lb=-1e6, ub=1e6, name="x_front"
-        )
-        self.x_back = self.mpc_model.addMVar(
-            (nx_l, self.N + 1), lb=-1e6, ub=1e6, name="x_back"
-        )
+        if not is_front:
+            self.x_front = self.mpc_model.addMVar(
+                (nx_l, self.N + 1), lb=-1e6, ub=1e6, name="x_front"
+            )
+        if not is_trailer:
+            self.x_back = self.mpc_model.addMVar(
+                (nx_l, self.N + 1), lb=-1e6, ub=1e6, name="x_back"
+            )
+        if is_leader:
+            self.leader_x = self.mpc_model.addMVar(
+                (nx_l, self.N + 1), lb=-1e6, ub=1e6, name="leader_x"
+            )
         # slack vars for constraints with prec and succ vehicles
         self.s_front = self.mpc_model.addMVar(
             (self.N + 1), lb=0, ub=float("inf"), name="s_front"
@@ -107,7 +116,7 @@ class LocalMpcADMM(MpcMld):
 
         # setting these bounds to zero removes the slack var, as leader and trailer
         # dont have cars in front or behind respectively
-        if is_leader:
+        if is_front:
             self.s_front.ub = 0
         if is_trailer:
             self.s_back.ub = 0
@@ -115,14 +124,7 @@ class LocalMpcADMM(MpcMld):
         # cost func
         cost = 0
         # tracking cost
-        if is_leader:
-            cost += sum(
-                [
-                    self.cost_func(self.x[:, [k]] - self.x_front[:, [k]], self.Q_x)
-                    for k in range(self.N + 1)
-                ]
-            )
-        else:
+        if not is_front and not is_leader:
             cost += sum(
                 [
                     self.cost_func(
@@ -131,6 +133,25 @@ class LocalMpcADMM(MpcMld):
                         - spacing_policy.spacing(self.x[:, [k]]),
                         self.Q_x,
                     )
+                    for k in range(self.N + 1)
+                ]
+            )
+        if not is_trailer and not is_leader:
+            cost += sum(
+                [
+                    self.cost_func(
+                        self.x_back[:, [k]]
+                        - self.x[:, [k]]
+                        - spacing_policy.spacing(self.x_back[:, [k]]),
+                        self.Q_x,
+                    )
+                    for k in range(self.N + 1)
+                ]
+            )
+        if is_leader:
+            cost += sum(
+                [
+                    self.cost_func(self.x[:, [k]] - self.leader_x[:, [k]], self.Q_x)
                     for k in range(self.N + 1)
                 ]
             )
@@ -151,7 +172,7 @@ class LocalMpcADMM(MpcMld):
             ]
         )
         # admm cost
-        if not is_leader:
+        if not is_front:
             cost += sum(
                 [
                     self.y_front[:, k] @ (self.x_front[:, [k]] - self.z_front[:, [k]])
@@ -198,7 +219,7 @@ class LocalMpcADMM(MpcMld):
         )
 
         # safe distance constraints
-        if not is_leader:
+        if not is_front:
             self.mpc_model.addConstrs(
                 (
                     self.x[0, [k]] - self.s_front[[k]]
@@ -233,10 +254,10 @@ class LocalMpcADMM(MpcMld):
             self.z_back[:, [k]].lb = z_back[:, [k]]
             self.z_back[:, [k]].ub = z_back[:, [k]]
 
-    def set_x_front(self, x_front):
+    def set_leader_x(self, leader_x):
         for k in range(self.N + 1):
-            self.x_front[:, [k]].lb = x_front[:, [k]]
-            self.x_front[:, [k]].ub = x_front[:, [k]]
+            self.leader_x[:, [k]].lb = leader_x[:, [k]]
+            self.leader_x[:, [k]].ub = leader_x[:, [k]]
 
 
 class LocalMpcGear(LocalMpcADMM, MpcGear):
@@ -247,6 +268,7 @@ class LocalMpcGear(LocalMpcADMM, MpcGear):
         rho: float,
         spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
         quadratic_cost: bool = True,
+        is_front: bool = False,
         is_leader: bool = False,
         is_trailer: bool = False,
         thread_limit: int | None = None,
@@ -261,6 +283,7 @@ class LocalMpcGear(LocalMpcADMM, MpcGear):
             self.u_g,
             spacing_policy,
             quadratic_cost,
+            is_front,
             is_leader,
             is_trailer,
             accel_cnstr_tightening,
@@ -270,6 +293,7 @@ class LocalMpcGear(LocalMpcADMM, MpcGear):
 class ADMMCoordinator(MldAgent):
     def __init__(
         self,
+        leader_index: int,
         local_mpcs: list[MpcMld],
         admm_iters: int,
         ep_len: int,
@@ -288,6 +312,7 @@ class ADMMCoordinator(MldAgent):
         super().__init__(local_mpcs[0])  # just pass first mpc to satisfy constructor
 
         self.n = len(local_mpcs)
+        self.leader_index = leader_index
         self.agents: list[MldAgent] = []
         for i in range(self.n):
             self.agents.append(MldAgent(local_mpcs[i]))
@@ -516,7 +541,7 @@ class ADMMCoordinator(MldAgent):
     # here we set the leader cost because it is independent of other vehicles' states
     def on_timestep_end(self, env: Env, episode: int, timestep: int) -> None:
         x_goal = self.leader_x[:, timestep : timestep + self.N + 1]
-        self.agents[0].mpc.set_x_front(x_goal)
+        self.agents[self.leader_index].mpc.set_leader_x(x_goal)
 
         # set the leader trajectory for centralized MPC
         if DEBUG_PLOT:
@@ -531,7 +556,7 @@ class ADMMCoordinator(MldAgent):
 
     def on_episode_start(self, env: Env, episode: int, state) -> None:
         x_goal = self.leader_x[:, 0 : self.N + 1]
-        self.agents[0].mpc.set_x_front(x_goal)
+        self.agents[self.leader_index].mpc.set_leader_x(x_goal)
         return super().on_episode_start(env, episode, state)
 
 
@@ -542,6 +567,7 @@ def simulate(
     plot: bool = True,
     seed: int = 1,
     thread_limit: int | None = None,
+    leader_index: int = 0
 ):
     n = sim.n  # num cars
     N = sim.N  # controller horizon
@@ -567,6 +593,7 @@ def simulate(
                 start_from_platoon=sim.start_from_platoon,
                 real_vehicle_as_reference=sim.real_vehicle_as_reference,
                 ep_len=sim.ep_len,
+                leader_index=leader_index
             ),
             max_episode_steps=ep_len,
         )
@@ -587,16 +614,17 @@ def simulate(
             systems[i],
             rho=0.5,
             spacing_policy=spacing_policy,
-            is_leader=True if i == 0 else False,
+            is_front=True if i == 0 else False,
+            is_leader=True if i == leader_index else False,
             is_trailer=True if i == n - 1 else False,
             thread_limit=thread_limit,
-            accel_cnstr_tightening=0.05,
         )
         for i in range(n)
     ]
     # agent
     agent = ADMMCoordinator(
-        mpcs,
+        leader_index=leader_index,
+        local_mpcs=mpcs,
         admm_iters=admm_iters,
         rho=0.5,
         ep_len=ep_len,
@@ -638,4 +666,4 @@ def simulate(
 
 
 if __name__ == "__main__":
-    simulate(Sim(), 50, save=False, seed=1)
+    simulate(Sim(), 10, save=False, seed=1, leader_index=3)

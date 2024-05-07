@@ -16,10 +16,10 @@ for seed in seed_range:
         else:
             sim = Sim_n_task_2(n, seed=seed)
         try:
-            sim_cent(sim, save=True, plot=False, seed=seed, thread_limit=thread_limit, leader_index=min(n-1, 2))
+            sim_cent(sim, save=True, plot=False, seed=seed, thread_limit=thread_limit, leader_index=min(n-1, 3))
         except:
             pass
         try:
-            sim_seq(sim, save=True, plot=False, seed=seed, thread_limit=thread_limit, leader_index=min(n-1, 2))
+            sim_admm(sim, admm_iters=20, save=True, plot=False, seed=seed, thread_limit=thread_limit, leader_index=min(n-1, 3))
         except:
             pass

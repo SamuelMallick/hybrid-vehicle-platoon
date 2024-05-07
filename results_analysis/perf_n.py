@@ -11,34 +11,34 @@ nx_l = 2
 
 types = [
     "cent",
-    "decent_vest_False",
-    "decent_vest_True",
+    # "decent_vest_False",
+    # "decent_vest_True",
     "seq",
     # "event_1",
-    "event_5",
+    # "event_5",
     # "event_10",
     # "admm_5",
-    "admm_20",
+    # "admm_20",
     # "admm_50",
 ]
-seeds = [i for i in range(150)]
+seeds = [i for i in range(3)]
 # seeds = [i for i in range(7)] + [i for i in range(50, 57)] + [i for i in range(100, 107)]
 leg = [
-    "decent",
+    # "decent",
     "seq",
-    "decent_pred"
+    # "decent_pred"
     # "event_1",
-    "event_5",
+    # "event_5",
     # "event_10",
     # "admm_5",
-    "admm_20",
+    # "admm_20",
     # "admm_50",
 ]
-num_seq_vars = 3
-num_event_vars = 1
-num_admm_vars = 1
+num_seq_vars = 1
+num_event_vars = 0
+num_admm_vars = 0
 
-n_sw = [i for i in range(2, 9)]
+n_sw = [i for i in range(2, 7)]
 N = 6
 
 track_costs = []
@@ -65,7 +65,7 @@ for type in types:
         for seed in seeds:
             try:
                 with open(
-                    f"data/{type}_task_2_n_{n}_N_{N}_seed_{seed}.pkl",
+                    f"data/{type}_task_3_n_{n}_N_{N}_seed_{seed}.pkl",
                     "rb",
                 ) as file:
                     X = pickle.load(file)
@@ -101,21 +101,21 @@ mf = ["-x", "-o", "-o", ":v", ":v", "--s", "--s", "--s"]  # marker format
 # tracking cost as percentrage performance drop from centralized
 perf_drop = []
 for i in range(1, counter):
-    # perf_drop.append(
-    #     [
-    #         100 * (track_costs[i][j] - track_costs[0][j]) / track_costs[0][j]
-    #         for j in range(len(track_costs[0]))
-    #     ]
-    # )
     perf_drop.append(
         [
-            (track_costs[i][j] - track_costs[0][j])
+            100 * (track_costs[i][j] - track_costs[0][j]) / track_costs[0][j]
             for j in range(len(track_costs[0]))
         ]
     )
     # perf_drop.append(
     #     [
-    #         (track_costs[i][j] - track_costs[0][j]) / (j+2)
+    #         (track_costs[i][j] - track_costs[0][j])
+    #         for j in range(len(track_costs[0]))
+    #     ]
+    # )
+    # perf_drop.append(
+    #     [
+    #         (track_costs[i][j] - track_costs[0][j]) / ((j+2)*track_costs[0][j])
     #         for j in range(len(track_costs[0]))
     #     ]
     # )
