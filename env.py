@@ -15,7 +15,7 @@ class PlatoonEnv(gym.Env[npt.NDArray[np.floating], npt.NDArray[np.floating]]):
     # tracking costs
     Q_x = np.diag([1, 0.1])  # penalty of state tracking error
     Q_u = 1 * np.eye(1)  # penalty on control effort
-    Q_du = 0 * np.eye(1)  # penalty on variation in control effort
+    Q_du = 0.2 * np.eye(1)  # penalty on variation in control effort
 
     # local state and control dimension of vehicles in the platoon
     nx_l = Platoon.nx_l

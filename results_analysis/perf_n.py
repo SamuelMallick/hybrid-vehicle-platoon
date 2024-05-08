@@ -11,8 +11,8 @@ nx_l = 2
 
 types = [
     "cent",
-    # "decent_vest_False",
-    # "decent_vest_True",
+    "decent_vest_False",
+    "decent_vest_True",
     "seq",
     # "event_1",
     # "event_5",
@@ -21,12 +21,12 @@ types = [
     # "admm_20",
     # "admm_50",
 ]
-seeds = [i for i in range(3)]
+seeds = [i for i in range(1)]
 # seeds = [i for i in range(7)] + [i for i in range(50, 57)] + [i for i in range(100, 107)]
 leg = [
-    # "decent",
     "seq",
-    # "decent_pred"
+    "decent",
+    "decent_pred"
     # "event_1",
     # "event_5",
     # "event_10",
@@ -34,7 +34,7 @@ leg = [
     # "admm_20",
     # "admm_50",
 ]
-num_seq_vars = 1
+num_seq_vars = 3
 num_event_vars = 0
 num_admm_vars = 0
 
@@ -65,7 +65,7 @@ for type in types:
         for seed in seeds:
             try:
                 with open(
-                    f"data/{type}_task_3_n_{n}_N_{N}_seed_{seed}.pkl",
+                    f"data/{type}_task_4_n_{n}_N_{N}_seed_{seed}.pkl",
                     "rb",
                 ) as file:
                     X = pickle.load(file)
