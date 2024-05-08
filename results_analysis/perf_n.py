@@ -12,33 +12,33 @@ nx_l = 2
 harmonic_mean = False
 
 types = [
-    "cent",
-    "decent_vest_False",
-    "decent_vest_True",
-    "seq",
+    # "cent",
+    # "decent_vest_False",
+    # "decent_vest_True",
+    # "seq",
     # "event_2",
-    "event_5",
+    # "event_5",
     # "event_10",
     # "admm_5",
-    "admm_20",
+    # "admm_20",
     # "admm_50",
 ]
-seeds = [i for i in range(150)]
+seeds = [i for i in range(50)]
 # seeds = [i for i in range(7)] + [i for i in range(50, 57)] + [i for i in range(100, 107)]
 leg = [
-    "seq",
-    "decent",
-    "decent_pred"
+    # "seq",
+    # "decent",
+    # "decent_pred"
     # "event_2",
-    "event_5",
+    # "event_5",
     # "event_10",
     # "admm_5",
-    "admm_20",
+    # "admm_20",
     # "admm_50",
 ]
-num_seq_vars = 3
-num_event_vars = 1
-num_admm_vars = 1
+num_seq_vars = 0
+num_event_vars = 0
+num_admm_vars = 0
 
 n_sw = [i for i in range(2, 9)]
 N = 6
