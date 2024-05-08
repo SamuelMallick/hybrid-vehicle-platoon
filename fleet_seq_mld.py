@@ -144,7 +144,12 @@ class LocalMpcMld(MpcMld):
             else:
                 cost += sum(
                     [
-                        self.cost_func(self.x[:, [k]] - self.leader_x[:, [k]]- spacing_policy.spacing(self.x[:, [k]]), self.Q_x)
+                        self.cost_func(
+                            self.x[:, [k]]
+                            - self.leader_x[:, [k]]
+                            - spacing_policy.spacing(self.x[:, [k]]),
+                            self.Q_x,
+                        )
                         for k in range(self.N + 1)
                     ]
                 )
@@ -268,7 +273,7 @@ class TrackingSequentialMldCoordinator(MldAgent):
         leader_x: np.ndarray,
         ts: float,
         leader_index: int = 0,
-        order_forwards: bool = True
+        order_forwards: bool = True,
     ) -> None:
         """Initialise the coordinator.
 
@@ -293,7 +298,7 @@ class TrackingSequentialMldCoordinator(MldAgent):
         self.ts = ts
         self.N = N
         self.leader_index = leader_index
-        self.forwards= order_forwards
+        self.forwards = order_forwards
 
     def get_control(self, state):
         x_l = np.split(state, self.n, axis=0)  # split into local state components
@@ -301,25 +306,29 @@ class TrackingSequentialMldCoordinator(MldAgent):
 
         # first leader
         if self.leader_index != 0:
-            x_pred_ahead = self.agents[self.leader_index - 1].get_predicted_state(shifted=True)
+            x_pred_ahead = self.agents[self.leader_index - 1].get_predicted_state(
+                shifted=True
+            )
             if x_pred_ahead is not None:
                 x_pred_ahead[0, -1] = (
                     x_pred_ahead[0, -2] + self.ts * x_pred_ahead[1, -1]
                 )
                 self.agents[self.leader_index].mpc.set_x_front(x_pred_ahead)
         if self.leader_index != self.n - 1:
-            x_pred_behind = self.agents[self.leader_index + 1].get_predicted_state(shifted=True)
-            if   (
-                x_pred_behind is not None
-            ):
+            x_pred_behind = self.agents[self.leader_index + 1].get_predicted_state(
+                shifted=True
+            )
+            if x_pred_behind is not None:
                 x_pred_behind[0, -1] = (
                     x_pred_behind[0, -2] + self.ts * x_pred_behind[1, -1]
                 )
                 self.agents[self.leader_index].mpc.set_x_back(x_pred_behind)
-        u[self.leader_index] = self.agents[self.leader_index].get_control(x_l[self.leader_index])
+        u[self.leader_index] = self.agents[self.leader_index].get_control(
+            x_l[self.leader_index]
+        )
 
         # vehicles in front of leader
-        for i in [self.leader_index-i-1 for i in range(0, self.leader_index)]:
+        for i in [self.leader_index - i - 1 for i in range(0, self.leader_index)]:
             if i != 0:
                 x_pred_ahead = self.agents[i - 1].get_predicted_state(shifted=True)
                 if x_pred_ahead is not None:
@@ -329,22 +338,22 @@ class TrackingSequentialMldCoordinator(MldAgent):
                     self.agents[i].mpc.set_x_front(x_pred_ahead)
             x_pred_behind = self.agents[i + 1].get_predicted_state(shifted=False)
             self.agents[i].mpc.set_x_back(x_pred_behind)
-            
+
             u[i] = self.agents[i].get_control(x_l[i])
-        
+
         # vehicles behind leader
-        for i in range(self.leader_index+1, self.n):
+        for i in range(self.leader_index + 1, self.n):
             x_pred_ahead = self.agents[i - 1].get_predicted_state(shifted=False)
             self.agents[i].mpc.set_x_front(x_pred_ahead)
 
-            if i != self.n-1:
+            if i != self.n - 1:
                 x_pred_behind = self.agents[i + 1].get_predicted_state(shifted=True)
                 if x_pred_behind is not None:
                     x_pred_behind[0, -1] = (
                         x_pred_behind[0, -2] + self.ts * x_pred_behind[1, -1]
                     )
                     self.agents[i].mpc.set_x_back(x_pred_behind)
-            
+
             u[i] = self.agents[i].get_control(x_l[i])
 
         if u[0].shape[0] > self.nu_l:  # includes gear choices
@@ -379,15 +388,19 @@ class TrackingSequentialMldCoordinator(MldAgent):
         # initial estimates
         for i in range(self.n):
             if i != 0:
-                self.agents[i].mpc.set_x_front(self.extrapolate_position_constant_vel(
+                self.agents[i].mpc.set_x_front(
+                    self.extrapolate_position_constant_vel(
                         env.x[self.nx_l * (i - 1)], env.x[self.nx_l * (i - 1) + 1]
-                    ))
-            if i != self.n-1:
-                self.agents[i].mpc.set_x_back(self.extrapolate_position_constant_vel(
+                    )
+                )
+            if i != self.n - 1:
+                self.agents[i].mpc.set_x_back(
+                    self.extrapolate_position_constant_vel(
                         env.x[self.nx_l * (i + 1)], env.x[self.nx_l * (i + 1) + 1]
-                    ))
+                    )
+                )
         return super().on_episode_start(env, episode, state)
-    
+
     def extrapolate_position_constant_vel(self, initial_pos: float, initial_vel: float):
         x_pred = np.zeros((self.nx_l, self.N + 1))
         x_pred[0, [0]] = initial_pos
@@ -405,7 +418,7 @@ def simulate(
     seed: int = 1,
     thread_limit: int | None = None,
     leader_index: int = 0,
-    order_forwards: bool = True
+    order_forwards: bool = True,
 ):
     n = sim.n  # num cars
     N = sim.N  # controller horizon
@@ -431,7 +444,7 @@ def simulate(
                 start_from_platoon=sim.start_from_platoon,
                 real_vehicle_as_reference=sim.real_vehicle_as_reference,
                 ep_len=sim.ep_len,
-                leader_index=leader_index
+                leader_index=leader_index,
             ),
             max_episode_steps=ep_len,
         )
@@ -461,7 +474,13 @@ def simulate(
     ]
     # agent
     agent = TrackingSequentialMldCoordinator(
-        mpcs, ep_len=ep_len, N=N, leader_x=leader_x, ts=ts, leader_index=leader_index, order_forwards=order_forwards
+        mpcs,
+        ep_len=ep_len,
+        N=N,
+        leader_x=leader_x,
+        ts=ts,
+        leader_index=leader_index,
+        order_forwards=order_forwards,
     )
 
     agent.evaluate(env=env, episodes=1, seed=seed)
@@ -497,4 +516,4 @@ def simulate(
 
 
 if __name__ == "__main__":
-    simulate(Sim(), save=False, seed=1, leader_index=2)
+    simulate(Sim(), save=False, seed=1, leader_index=0)

@@ -58,7 +58,9 @@ class PlatoonEnv(gym.Env[npt.NDArray[np.floating], npt.NDArray[np.floating]]):
             self.cost_func = self.lin_cost
 
         if leader_index != 0 and real_vehicle_as_reference:
-            raise NotImplementedError(f'Not implemented for real vehicle with leader not 0.')
+            raise NotImplementedError(
+                f"Not implemented for real vehicle with leader not 0."
+            )
 
         self.previous_action: np.ndarray | None = (
             None  # store previous action to penalise variation

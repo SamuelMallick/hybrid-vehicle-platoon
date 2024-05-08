@@ -567,7 +567,7 @@ def simulate(
     plot: bool = True,
     seed: int = 1,
     thread_limit: int | None = None,
-    leader_index: int = 0
+    leader_index: int = 0,
 ):
     n = sim.n  # num cars
     N = sim.N  # controller horizon
@@ -593,7 +593,7 @@ def simulate(
                 start_from_platoon=sim.start_from_platoon,
                 real_vehicle_as_reference=sim.real_vehicle_as_reference,
                 ep_len=sim.ep_len,
-                leader_index=leader_index
+                leader_index=leader_index,
             ),
             max_episode_steps=ep_len,
         )
@@ -666,4 +666,4 @@ def simulate(
 
 
 if __name__ == "__main__":
-    simulate(Sim(), 10, save=False, seed=1, leader_index=3)
+    simulate(Sim(), 10, save=False, seed=1, leader_index=0)

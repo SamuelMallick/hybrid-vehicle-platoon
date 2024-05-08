@@ -5,7 +5,7 @@ from fleet_naive_admm import simulate as sim_admm
 from fleet_seq_mld import simulate as sim_seq
 from misc.common_controller_params import Sim_n_task_1, Sim_n_task_2
 
-task_1 = True
+task_1 = False
 thread_limit = 5
 seed_range = [i for i in range(10)]
 
@@ -16,10 +16,6 @@ for n in range(2, 11):
         else:
             sim = Sim_n_task_2(n, seed=seed)
 
-        try:
-            sim_cent(sim, save=True, plot=False, seed=seed, thread_limit=thread_limit)
-        except:
-            pass
         try:
             sim_seq(sim, save=True, plot=False, seed=seed, thread_limit=thread_limit)
         except:
@@ -82,17 +78,6 @@ for n in range(2, 11):
         try:
             sim_event(
                 sim,
-                event_iters=5,
-                save=True,
-                plot=False,
-                seed=seed,
-                thread_limit=thread_limit,
-            )
-        except:
-            pass
-        try:
-            sim_event(
-                sim,
                 event_iters=10,
                 save=True,
                 plot=False,
@@ -101,3 +86,28 @@ for n in range(2, 11):
             )
         except:
             pass
+
+seed_range = [i for i in range(10)]
+
+for n in range(9, 11):
+    for seed in seed_range:
+        if task_1:
+            sim = Sim_n_task_1(n)
+        else:
+            sim = Sim_n_task_2(n, seed=seed)
+        try:
+            sim_cent(sim, save=True, plot=False, seed=seed, thread_limit=thread_limit)
+        except:
+            pass
+        try:
+            sim_event(
+                sim,
+                event_iters=5,
+                save=True,
+                plot=False,
+                seed=seed,
+                thread_limit=thread_limit,
+            )
+        except:
+            pass
+

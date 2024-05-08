@@ -141,7 +141,12 @@ class LocalMpcMld(MpcMld):
             else:
                 cost += sum(
                     [
-                        self.cost_func(self.x[:, [k]] - self.leader_x[:, [k]]- spacing_policy.spacing(self.x[:, [k]]), self.Q_x)
+                        self.cost_func(
+                            self.x[:, [k]]
+                            - self.leader_x[:, [k]]
+                            - spacing_policy.spacing(self.x[:, [k]]),
+                            self.Q_x,
+                        )
                         for k in range(self.N + 1)
                     ]
                 )
@@ -390,7 +395,7 @@ def simulate(
     seed: int = 2,
     thread_limit: int | None = None,
     velocity_estimator: bool = False,
-    leader_index: int = 0
+    leader_index: int = 0,
 ):
     n = sim.n  # num cars
     N = sim.N  # controller horizon
@@ -416,7 +421,7 @@ def simulate(
                 start_from_platoon=sim.start_from_platoon,
                 real_vehicle_as_reference=sim.real_vehicle_as_reference,
                 ep_len=sim.ep_len,
-                leader_index=leader_index
+                leader_index=leader_index,
             ),
             max_episode_steps=ep_len,
         )
@@ -452,7 +457,7 @@ def simulate(
         leader_x=leader_x,
         ts=ts,
         velocity_estimator=velocity_estimator,
-        leader_index=leader_index
+        leader_index=leader_index,
     )
 
     agent.evaluate(env=env, episodes=1, seed=seed)
@@ -488,4 +493,4 @@ def simulate(
 
 
 if __name__ == "__main__":
-    simulate(Sim(), save=False, seed=1, velocity_estimator=False, leader_index=2)
+    simulate(Sim(), save=False, seed=1, velocity_estimator=False, leader_index=0)

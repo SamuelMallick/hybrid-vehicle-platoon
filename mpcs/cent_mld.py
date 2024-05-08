@@ -61,7 +61,9 @@ class MpcMldCent(MpcMldCentDecup):
             self.cost_func = self.min_1_norm
 
         if leader_index != 0 and real_vehicle_as_reference:
-            raise NotImplementedError(f'Not implemented for real vehicle with leader not 0.')
+            raise NotImplementedError(
+                f"Not implemented for real vehicle with leader not 0."
+            )
 
         nx_l = Vehicle.nx_l
         nu_l = Vehicle.nu_l
@@ -83,7 +85,9 @@ class MpcMldCent(MpcMldCentDecup):
         if not real_vehicle_as_reference:
             cost += sum(
                 [
-                    self.cost_func(x_l[leader_index][:, [k]] - self.leader_traj[:, [k]], self.Q_x)
+                    self.cost_func(
+                        x_l[leader_index][:, [k]] - self.leader_traj[:, [k]], self.Q_x
+                    )
                     for k in range(self.N + 1)
                 ]
             )

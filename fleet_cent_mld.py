@@ -69,7 +69,11 @@ class MpcNonlinearGearCent(MpcMldCent, MpcNonlinearGear):
         G = np.vstack([nl_systems[i]["G"] for i in range(n)])
         self.setup_gears(N, F, G)
         self.setup_cost_and_constraints(
-            self.u_g, spacing_policy, leader_index, quadratic_cost, real_vehicle_as_reference
+            self.u_g,
+            spacing_policy,
+            leader_index,
+            quadratic_cost,
+            real_vehicle_as_reference,
         )
 
 
@@ -103,7 +107,7 @@ def simulate(
     plot: bool = True,
     seed: int = 1,
     thread_limit: int | None = None,
-    leader_index = 0,
+    leader_index=0,
 ):
     n = sim.n  # num cars
     N = sim.N  # controller horizon
@@ -129,7 +133,7 @@ def simulate(
                 start_from_platoon=sim.start_from_platoon,
                 real_vehicle_as_reference=sim.real_vehicle_as_reference,
                 ep_len=sim.ep_len,
-                leader_index=leader_index
+                leader_index=leader_index,
             ),
             max_episode_steps=ep_len,
         )
@@ -206,4 +210,4 @@ def simulate(
 
 
 if __name__ == "__main__":
-    simulate(Sim(), save=False, seed=1, leader_index=3)
+    simulate(Sim(), save=False, seed=1, leader_index=0)
