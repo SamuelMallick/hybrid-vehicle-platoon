@@ -10,11 +10,19 @@ thread_limit = 5
 seed_range = [i for i in range(50)]
 
 for seed in seed_range:
-    for n in range(2, 9):
+    for n in range(2, 7):
         if task_1:
             sim = Sim_n_task_1(n)
         else:
             sim = Sim_n_task_2(n, seed=seed)
+        try:
+            sim_cent(sim, save=True, plot=False, seed=seed, thread_limit=thread_limit, leader_index=0)
+        except:
+            pass 
+        try:
+            sim_seq(sim, save=True, plot=False, seed=seed, thread_limit=thread_limit, leader_index=0)
+        except:
+            pass   
         try:
             sim_dec(sim, save=True, plot=False, seed=seed, thread_limit=thread_limit, leader_index=0, velocity_estimator=False)
         except:
