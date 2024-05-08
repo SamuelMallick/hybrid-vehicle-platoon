@@ -15,7 +15,17 @@ for n in range(2, 11):
             sim = Sim_n_task_1(n)
         else:
             sim = Sim_n_task_2(n, seed=seed)
-
+        try:
+            sim_admm(
+                sim,
+                admm_iters=20,
+                save=True,
+                plot=False,
+                seed=seed,
+                thread_limit=thread_limit,
+            )
+        except:
+            pass
         try:
             sim_seq(sim, save=True, plot=False, seed=seed, thread_limit=thread_limit)
         except:
@@ -46,17 +56,6 @@ for n in range(2, 11):
             sim_admm(
                 sim,
                 admm_iters=5,
-                save=True,
-                plot=False,
-                seed=seed,
-                thread_limit=thread_limit,
-            )
-        except:
-            pass
-        try:
-            sim_admm(
-                sim,
-                admm_iters=20,
                 save=True,
                 plot=False,
                 seed=seed,
