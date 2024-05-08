@@ -27,7 +27,7 @@ class Sim:
     vehicle_model_type: Literal["nonlinear", "pwa_friction", "pwa_gear"] = "pwa_gear"
     start_from_platoon: bool = False
     quadratic_cost: bool = True
-    n = 8
+    n = 4
     N = 6
     ep_len = 150
     # spacing_policy = ConstantSpacingPolicy(50)
@@ -66,7 +66,7 @@ class Sim_n_task_2(Sim):
     def __init__(self, n: int, seed: int) -> None:
         super().__init__()
         self.n = n
-        self.id = f"task_3_n_{n}_N_{self.N}"
+        self.id = f"task_2_n_{n}_N_{self.N}"
         self.spacing_policy = ConstantTimePolicy(10, 3)
         self.leader_trajectory = StopAndGoLeaderTrajectory(
             p=3000,

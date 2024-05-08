@@ -488,4 +488,4 @@ def simulate(
 
 
 if __name__ == "__main__":
-    simulate(Sim(), save=False, seed=1, velocity_estimator=False, leader_index=5)
+    simulate(Sim(), save=False, seed=1, velocity_estimator=False, leader_index=2)
