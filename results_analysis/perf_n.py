@@ -21,7 +21,7 @@ types = [
     # "admm_20",
     # "admm_50",
 ]
-seeds = [i for i in range(1)]
+seeds = [i for i in range(20)]
 # seeds = [i for i in range(7)] + [i for i in range(50, 57)] + [i for i in range(100, 107)]
 leg = [
     "seq",
@@ -65,7 +65,7 @@ for type in types:
         for seed in seeds:
             try:
                 with open(
-                    f"data/{type}_task_4_n_{n}_N_{N}_seed_{seed}.pkl",
+                    f"data/{type}_task_2_n_{n}_N_{N}_seed_{seed}.pkl",
                     "rb",
                 ) as file:
                     X = pickle.load(file)
@@ -101,18 +101,18 @@ mf = ["-x", "-o", "-o", ":v", ":v", "--s", "--s", "--s"]  # marker format
 # tracking cost as percentrage performance drop from centralized
 perf_drop = []
 for i in range(1, counter):
-    perf_drop.append(
-        [
-            100 * (track_costs[i][j] - track_costs[0][j]) / track_costs[0][j]
-            for j in range(len(track_costs[0]))
-        ]
-    )
     # perf_drop.append(
     #     [
-    #         (track_costs[i][j] - track_costs[0][j])
+    #         100 * (track_costs[i][j] - track_costs[0][j]) / track_costs[0][j]
     #         for j in range(len(track_costs[0]))
     #     ]
     # )
+    perf_drop.append(
+        [
+            (track_costs[i][j] - track_costs[0][j])
+            for j in range(len(track_costs[0]))
+        ]
+    )
     # perf_drop.append(
     #     [
     #         (track_costs[i][j] - track_costs[0][j]) / ((j+2)*track_costs[0][j])
