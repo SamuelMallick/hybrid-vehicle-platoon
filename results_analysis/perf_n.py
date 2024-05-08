@@ -2,12 +2,14 @@ import pickle
 import statistics
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 
 plt.rc("text", usetex=True)
 plt.rc("font", size=14)
 plt.style.use("bmh")
 
 nx_l = 2
+harmonic_mean = False
 
 types = [
     "cent",
@@ -16,10 +18,10 @@ types = [
     "seq",
     # "event_2",
     "event_5",
-    "event_10",
-    "admm_5",
+    # "event_10",
+    # "admm_5",
     "admm_20",
-    "admm_50",
+    # "admm_50",
 ]
 seeds = [i for i in range(150)]
 # seeds = [i for i in range(7)] + [i for i in range(50, 57)] + [i for i in range(100, 107)]
@@ -29,14 +31,14 @@ leg = [
     "decent_pred"
     # "event_2",
     "event_5",
-    "event_10",
-    "admm_5",
+    # "event_10",
+    # "admm_5",
     "admm_20",
-    "admm_50",
+    # "admm_50",
 ]
 num_seq_vars = 3
-num_event_vars = 2
-num_admm_vars = 3
+num_event_vars = 1
+num_admm_vars = 1
 
 n_sw = [i for i in range(2, 9)]
 N = 6
@@ -48,6 +50,8 @@ time_av = []
 nodes = []
 viols = []
 counter = 0
+missing_seeds = []
+included_seeds = []
 for type in types:
     track_costs.append([])
     time_min.append([])
@@ -63,7 +67,8 @@ for type in types:
         nodes[counter].append([])
         viols[counter].append([])
         for seed in seeds:
-            try:
+            if all([os.path.isfile(f"data/{t}_task_2_n_{n_t}_N_{N}_seed_{seed}.pkl") for t in types for n_t in n_sw]):
+                included_seeds.append(seed)
                 with open(
                     f"data/{type}_task_2_n_{n}_N_{N}_seed_{seed}.pkl",
                     "rb",
@@ -82,16 +87,27 @@ for type in types:
                 time_av[counter][-1].append(sum(solve_times)[0] / len(solve_times))
                 nodes[counter][-1].append(max(node_counts)[0])
                 viols[counter][-1].append(sum(violations) / 100)
-            except:
-                print(f'no seed {seed}')
-        track_costs[counter][-1] = statistics.harmonic_mean(track_costs[counter][-1])
-        time_min[counter][-1] = statistics.harmonic_mean(time_min[counter][-1])
-        time_max[counter][-1] = statistics.harmonic_mean(time_max[counter][-1])
-        time_av[counter][-1] = statistics.harmonic_mean(time_av[counter][-1])
-        nodes[counter][-1] = statistics.harmonic_mean(nodes[counter][-1])
-        viols[counter][-1] = statistics.harmonic_mean(viols[counter][-1])
+            else:
+                missing_seeds.append(seed)
+        if harmonic_mean:
+            track_costs[counter][-1] = statistics.harmonic_mean(track_costs[counter][-1])
+            time_min[counter][-1] = statistics.harmonic_mean(time_min[counter][-1])
+            time_max[counter][-1] = statistics.harmonic_mean(time_max[counter][-1])
+            time_av[counter][-1] = statistics.harmonic_mean(time_av[counter][-1])
+            nodes[counter][-1] = statistics.harmonic_mean(nodes[counter][-1])
+            viols[counter][-1] = statistics.harmonic_mean(viols[counter][-1])
+        else:
+            track_costs[counter][-1] = sum(track_costs[counter][-1])/len(track_costs[counter][-1])
+            time_min[counter][-1] = sum(time_min[counter][-1])/len(time_min[counter][-1])
+            time_max[counter][-1] = sum(time_max[counter][-1])/len(time_max[counter][-1])
+            time_av[counter][-1] = sum(time_av[counter][-1])/len(time_av[counter][-1])
+            nodes[counter][-1] = sum(nodes[counter][-1])/len(nodes[counter][-1])
+            viols[counter][-1] = sum(viols[counter][-1])/len(viols[counter][-1])
     counter += 1
-
+missing_seeds = list(dict.fromkeys(missing_seeds))
+print(f'missing seeds: {missing_seeds}')
+included_seeds = list(dict.fromkeys(included_seeds))
+print(f'included seeds: {included_seeds}')
 
 # plotting params for all figs
 lw = 1.5  # line width
