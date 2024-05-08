@@ -14,7 +14,8 @@ np.random.seed(2)
 class Params:
     Q_x = np.diag([1, 0.1])  # penalty of state tracking error
     Q_u = 1 * np.eye(1)  # penalty on control effort
-    Q_du = 0 * np.eye(1)  # penalty on variation in control effort
+    q_du = 0
+    Q_du = q_du * np.eye(1)  # penalty on variation in control effort
     w = 1e4  # penalty on slack variables
     ts = 1
     a_acc = 2.5  # acceleration limit
@@ -66,7 +67,10 @@ class Sim_n_task_2(Sim):
     def __init__(self, n: int, seed: int) -> None:
         super().__init__()
         self.n = n
-        self.id = f"task_3_n_{n}_N_{self.N}"
+        if Params.q_du == 0:
+            self.id = f"task_2_n_{n}_N_{self.N}"
+        else:
+            self.id = f"task_2_n_{n}_N_{self.N}_q_{Params.q_du}"
         self.spacing_policy = ConstantTimePolicy(10, 3)
         self.leader_trajectory = StopAndGoLeaderTrajectory(
             p=3000,
