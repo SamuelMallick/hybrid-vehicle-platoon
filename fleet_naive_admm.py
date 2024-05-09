@@ -66,8 +66,8 @@ class LocalMpcADMM(MpcMld):
         spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
         quadratic_cost: bool = True,
         is_front: bool = False,
-        is_leader=False,
-        is_trailer=False,
+        is_leader: bool=False,
+        is_trailer: bool=False,
         accel_cnstr_tightening: float = 0.0,
     ):
         """Set up  cost and constraints for vehicle. Penalises the u passed in."""
@@ -84,34 +84,32 @@ class LocalMpcADMM(MpcMld):
             self.x_front = self.mpc_model.addMVar(
                 (nx_l, self.N + 1), lb=-1e6, ub=1e6, name="x_front"
             )
+            self.y_front = self.mpc_model.addMVar(
+                (nx_l, self.N + 1), lb=0, ub=0, name="y_front"
+            )
+            self.z_front = self.mpc_model.addMVar(
+                (nx_l, self.N + 1), lb=0, ub=0, name="z_front"
+            )
         if not is_trailer:
             self.x_back = self.mpc_model.addMVar(
                 (nx_l, self.N + 1), lb=-1e6, ub=1e6, name="x_back"
             )
+            self.y_back = self.mpc_model.addMVar(
+                (nx_l, self.N + 1), lb=0, ub=0, name="y_back"
+            )
+            self.z_back = self.mpc_model.addMVar(
+                (nx_l, self.N + 1), lb=0, ub=0, name="z_back"
+            )
         if is_leader:
             self.leader_x = self.mpc_model.addMVar(
                 (nx_l, self.N + 1), lb=-1e6, ub=1e6, name="leader_x"
-            )
-        # slack vars for constraints with prec and succ vehicles
+            )      
+
         self.s_front = self.mpc_model.addMVar(
             (self.N + 1), lb=0, ub=float("inf"), name="s_front"
-        )
+        )  
         self.s_back = self.mpc_model.addMVar(
             (self.N + 1), lb=0, ub=float("inf"), name="s_back"
-        )
-
-        # admm vars
-        self.y_front = self.mpc_model.addMVar(
-            (nx_l, self.N + 1), lb=0, ub=0, name="y_front"
-        )
-        self.y_back = self.mpc_model.addMVar(
-            (nx_l, self.N + 1), lb=0, ub=0, name="y_back"
-        )
-        self.z_front = self.mpc_model.addMVar(
-            (nx_l, self.N + 1), lb=0, ub=0, name="z_front"
-        )
-        self.z_back = self.mpc_model.addMVar(
-            (nx_l, self.N + 1), lb=0, ub=0, name="z_back"
         )
 
         # setting these bounds to zero removes the slack var, as leader and trailer
@@ -666,4 +664,4 @@ def simulate(
 
 
 if __name__ == "__main__":
-    simulate(Sim(), 10, save=False, seed=1, leader_index=0)
+    simulate(Sim(), 20, save=False, seed=1, leader_index=0)
