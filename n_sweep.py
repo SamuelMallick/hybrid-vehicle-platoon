@@ -67,7 +67,7 @@ for n in range(2, 11):
             )
         except:
             pass
-        
+
         try:
             sim_admm(
                 sim,

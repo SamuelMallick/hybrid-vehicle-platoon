@@ -66,8 +66,8 @@ class LocalMpcADMM(MpcMld):
         spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
         quadratic_cost: bool = True,
         is_front: bool = False,
-        is_leader: bool=False,
-        is_trailer: bool=False,
+        is_leader: bool = False,
+        is_trailer: bool = False,
         accel_cnstr_tightening: float = 0.0,
     ):
         """Set up  cost and constraints for vehicle. Penalises the u passed in."""
@@ -103,11 +103,11 @@ class LocalMpcADMM(MpcMld):
         if is_leader:
             self.leader_x = self.mpc_model.addMVar(
                 (nx_l, self.N + 1), lb=-1e6, ub=1e6, name="leader_x"
-            )      
+            )
 
         self.s_front = self.mpc_model.addMVar(
             (self.N + 1), lb=0, ub=float("inf"), name="s_front"
-        )  
+        )
         self.s_back = self.mpc_model.addMVar(
             (self.N + 1), lb=0, ub=float("inf"), name="s_back"
         )

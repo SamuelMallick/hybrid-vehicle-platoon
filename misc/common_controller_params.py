@@ -64,13 +64,15 @@ class Sim_n_task_1(Sim):
 
 
 class Sim_n_task_2(Sim):
-    def __init__(self, n: int, seed: int) -> None:
+    def __init__(self, n: int, seed: int, leader_index: int | None = None) -> None:
         super().__init__()
         self.n = n
         if Params.q_du == 0:
             self.id = f"task_2_n_{n}_N_{self.N}"
         else:
             self.id = f"task_2_n_{n}_N_{self.N}_q_{Params.q_du}"
+        if leader_index is not None:
+            self.id += f'_lead_{leader_index}'
         self.spacing_policy = ConstantTimePolicy(10, 3)
         self.leader_trajectory = StopAndGoLeaderTrajectory(
             p=3000,

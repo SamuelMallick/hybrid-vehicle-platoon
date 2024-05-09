@@ -16,30 +16,30 @@ types = [
     "decent_vest_True",
     "seq",
     # "event_1",
-    # "event_5",
+    "event_5",
     # "event_10",
     # "admm_5",
     # "admm_20",
     # "admm_50",
 ]
-seeds = [i for i in range(20)]
+seeds = [i for i in range(2)]
 # seeds = [i for i in range(7)] + [i for i in range(50, 57)] + [i for i in range(100, 107)]
 leg = [
-    "seq",
     "decent",
     "decent_pred",
+    "seq",
     # "event_1",
-    # "event_5",
-    # "event_10",
+    "event_5",
+    "event_10",
     # "admm_5",
     # "admm_20",
     # "admm_50",
 ]
 num_seq_vars = 3
-num_event_vars = 0
+num_event_vars = 1
 num_admm_vars = 0
 
-n_sw = [i for i in range(2, 7)]
+n_sw = [i for i in range(2, 5)]
 N = 6
 
 track_costs = []
@@ -64,27 +64,29 @@ for type in types:
         nodes[counter].append([])
         viols[counter].append([])
         for seed in seeds:
-            try:
-                with open(
-                    f"data/{type}_task_2_n_{n}_N_{N}_seed_{seed}.pkl",
-                    "rb",
-                ) as file:
-                    X = pickle.load(file)
-                    U = pickle.load(file)
-                    R = pickle.load(file)
-                    solve_times = pickle.load(file)
-                    node_counts = pickle.load(file)
-                    violations = pickle.load(file)
-                    leader_state = pickle.load(file)
+            for lead in [i for i in range(n)]:
+                try:
+                    with open(
+                        f"data/multi_leader/{type}_task_2_n_{n}_N_{N}_lead_{lead}_seed_{seed}.pkl",
+                        # f"data/{type}_task_2_n_{n}_N_{N}_q_0.2_seed_{seed}.pkl",
+                        "rb",
+                    ) as file:
+                        X = pickle.load(file)
+                        U = pickle.load(file)
+                        R = pickle.load(file)
+                        solve_times = pickle.load(file)
+                        node_counts = pickle.load(file)
+                        violations = pickle.load(file)
+                        leader_state = pickle.load(file)
 
-                track_costs[counter][-1].append(sum(R)[0, 0])
-                time_min[counter][-1].append(min(solve_times)[0])
-                time_max[counter][-1].append(max(solve_times)[0])
-                time_av[counter][-1].append(sum(solve_times)[0] / len(solve_times))
-                nodes[counter][-1].append(max(node_counts)[0])
-                viols[counter][-1].append(sum(violations) / 100)
-            except:
-                print(f"no seed {seed}")
+                    track_costs[counter][-1].append(sum(R)[0, 0])
+                    time_min[counter][-1].append(min(solve_times)[0])
+                    time_max[counter][-1].append(max(solve_times)[0])
+                    time_av[counter][-1].append(sum(solve_times)[0] / len(solve_times))
+                    nodes[counter][-1].append(max(node_counts)[0])
+                    viols[counter][-1].append(sum(violations) / 100)
+                except:
+                    print(f"no seed {seed}")
         track_costs[counter][-1] = statistics.harmonic_mean(track_costs[counter][-1])
         time_min[counter][-1] = statistics.harmonic_mean(time_min[counter][-1])
         time_max[counter][-1] = statistics.harmonic_mean(time_max[counter][-1])
@@ -102,15 +104,15 @@ mf = ["-x", "-o", "-o", ":v", ":v", "--s", "--s", "--s"]  # marker format
 # tracking cost as percentrage performance drop from centralized
 perf_drop = []
 for i in range(1, counter):
-    # perf_drop.append(
-    #     [
-    #         100 * (track_costs[i][j] - track_costs[0][j]) / track_costs[0][j]
-    #         for j in range(len(track_costs[0]))
-    #     ]
-    # )
     perf_drop.append(
-        [(track_costs[i][j] - track_costs[0][j]) for j in range(len(track_costs[0]))]
+        [
+            100 * (track_costs[i][j] - track_costs[0][j]) / track_costs[0][j]
+            for j in range(len(track_costs[0]))
+        ]
     )
+    # perf_drop.append(
+    #     [(track_costs[i][j] - track_costs[0][j]) for j in range(len(track_costs[0]))]
+    # )
     # perf_drop.append(
     #     [
     #         (track_costs[i][j] - track_costs[0][j]) / ((j+2)*track_costs[0][j])
@@ -126,86 +128,86 @@ error_upper = [
 ]
 
 # plot perf drop
-# y_lim = 100
-# _, axs = plt.subplots(
-#     6,
-#     1,
-#     constrained_layout=True,
-#     sharex=True,
-#     gridspec_kw={"height_ratios": [1, 1, 0.6, 2, 1.2, 1]},
-# )
-# for i, leg_ in enumerate(leg):
-#     axs[0].plot(5, 5, mf[i + 1], label=leg_, markerfacecolor="none")
-# axs[0].set_axis_off()
-# axs[0].legend(leg, ncol=2, loc="center")
-# for i in range(counter - 1):
-#     axs[1].plot(
-#         n_sw,
-#         np.asarray(perf_drop[i]).reshape(len(n_sw)),
-#         mf[i + 1],
-#         linewidth=lw,
-#         markersize=ms,
-#         color=f"C{i}",
-#         markerfacecolor="none",
-#     )
-# axs[1].set_ylabel(r"$\%J$")
-# # axs[1].set_ylim(-25, y_lim)
+y_lim = 100
+_, axs = plt.subplots(
+    6,
+    1,
+    constrained_layout=True,
+    sharex=True,
+    gridspec_kw={"height_ratios": [1, 1, 0.6, 2, 1.2, 1]},
+)
+for i, leg_ in enumerate(leg):
+    axs[0].plot(5, 5, mf[i + 1], label=leg_, markerfacecolor="none")
+axs[0].set_axis_off()
+axs[0].legend(leg, ncol=2, loc="center")
+for i in range(counter - 1):
+    axs[1].plot(
+        n_sw,
+        np.asarray(perf_drop[i]).reshape(len(n_sw)),
+        mf[i + 1],
+        linewidth=lw,
+        markersize=ms,
+        color=f"C{i}",
+        markerfacecolor="none",
+    )
+axs[1].set_ylabel(r"$\%J$")
+# axs[1].set_ylim(-25, y_lim)
 
-# y_lim = 0.3
-# for i in range(1, 4):
-#     _, _, bars = axs[2].errorbar(
-#         np.asarray([n_sw[j] + 0.0 * i for j in range(len(n_sw))]),
-#         np.asarray(time_av[i]),
-#         yerr=[np.asarray(error_lower[i]), np.asarray(error_upper[i])],
-#         linewidth=lw,
-#         markersize=ms,
-#         color=f"C{i-1}",
-#         fmt=mf[i],
-#         capsize=4,
-#         markerfacecolor="none",
-#     )
-#     [bar.set_alpha(0.7) for bar in bars]
-# # axs[2].set_ylim(-0.1, y_lim)
-# axs[2].set_ylabel("$t_{COMP}$")
-# y_lim = 6
-# for i in range(4, 4 + num_event_vars):
-#     _, _, bars = axs[3].errorbar(
-#         np.asarray([n_sw[j] + 0.0 * i for j in range(len(n_sw))]),
-#         np.asarray(time_av[i]),
-#         yerr=[np.asarray(error_lower[i]), np.asarray(error_upper[i])],
-#         linewidth=lw,
-#         markersize=ms,
-#         color=f"C{i-1}",
-#         fmt=mf[i],
-#         capsize=4,
-#         markerfacecolor="none",
-#     )
-#     [bar.set_alpha(0.7) for bar in bars]
-# # axs[3].set_ylim(-0.1, y_lim)
-# axs[3].set_ylabel("$t_{COMP}$")
-# y_lim = 3.5
-# for i in range(4 + num_event_vars, 4 + num_event_vars + num_admm_vars):
-#     _, _, bars = axs[4].errorbar(
-#         np.asarray([n_sw[j] + 0.0 * i for j in range(len(n_sw))]),
-#         np.asarray(time_av[i]),
-#         yerr=[np.asarray(error_lower[i]), np.asarray(error_upper[i])],
-#         linewidth=lw,
-#         markersize=ms,
-#         color=f"C{i-1}",
-#         fmt=mf[i],
-#         capsize=4,
-#         markerfacecolor="none",
-#     )
-#     [bar.set_alpha(0.7) for bar in bars]
-# axs[4].set_ylabel("$t_{COMP}$")
-# # axs[4].set_ylim(-0.1, y_lim)
-# for i in range(1, counter):
-#     axs[5].plot(
-#         n_sw, nodes[i], mf[i], linewidth=lw, markersize=ms, markerfacecolor="none"
-#     )
-# axs[5].set_ylabel(r"$\#nodes$")
-# axs[5].set_yscale("log")
-# axs[5].set_xlabel("$n$")
+y_lim = 0.3
+for i in range(1, 4):
+    _, _, bars = axs[2].errorbar(
+        np.asarray([n_sw[j] + 0.0 * i for j in range(len(n_sw))]),
+        np.asarray(time_av[i]),
+        yerr=[np.asarray(error_lower[i]), np.asarray(error_upper[i])],
+        linewidth=lw,
+        markersize=ms,
+        color=f"C{i-1}",
+        fmt=mf[i],
+        capsize=4,
+        markerfacecolor="none",
+    )
+    [bar.set_alpha(0.7) for bar in bars]
+# axs[2].set_ylim(-0.1, y_lim)
+axs[2].set_ylabel("$t_{COMP}$")
+y_lim = 6
+for i in range(4, 4 + num_event_vars):
+    _, _, bars = axs[3].errorbar(
+        np.asarray([n_sw[j] + 0.0 * i for j in range(len(n_sw))]),
+        np.asarray(time_av[i]),
+        yerr=[np.asarray(error_lower[i]), np.asarray(error_upper[i])],
+        linewidth=lw,
+        markersize=ms,
+        color=f"C{i-1}",
+        fmt=mf[i],
+        capsize=4,
+        markerfacecolor="none",
+    )
+    [bar.set_alpha(0.7) for bar in bars]
+# axs[3].set_ylim(-0.1, y_lim)
+axs[3].set_ylabel("$t_{COMP}$")
+y_lim = 3.5
+for i in range(4 + num_event_vars, 4 + num_event_vars + num_admm_vars):
+    _, _, bars = axs[4].errorbar(
+        np.asarray([n_sw[j] + 0.0 * i for j in range(len(n_sw))]),
+        np.asarray(time_av[i]),
+        yerr=[np.asarray(error_lower[i]), np.asarray(error_upper[i])],
+        linewidth=lw,
+        markersize=ms,
+        color=f"C{i-1}",
+        fmt=mf[i],
+        capsize=4,
+        markerfacecolor="none",
+    )
+    [bar.set_alpha(0.7) for bar in bars]
+axs[4].set_ylabel("$t_{COMP}$")
+# axs[4].set_ylim(-0.1, y_lim)
+for i in range(1, counter):
+    axs[5].plot(
+        n_sw, nodes[i], mf[i], linewidth=lw, markersize=ms, markerfacecolor="none"
+    )
+axs[5].set_ylabel(r"$\#nodes$")
+axs[5].set_yscale("log")
+axs[5].set_xlabel("$n$")
 # # save2tikz(plt.gcf())
 
 _, axs = plt.subplots(1, 1, constrained_layout=True, sharex=True)

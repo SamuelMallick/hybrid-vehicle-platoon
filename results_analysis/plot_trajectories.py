@@ -10,14 +10,14 @@ plt.rc("font", size=14)
 plt.style.use("bmh")
 
 nx_l = 2
-plot_len = 200
-name = "cent"
-n = 8
-N = 8
-seed = 1
+plot_len = 150
+name = "seq"
+n = 4
+seed = 0
+N=6
 
 with open(
-    f"data/{name}_task_2_n_{n}_seed_{seed}.pkl",
+    f"data/multi_leader/{name}_task_2_n_{n}_N_{N}_lead_{2}_seed_{seed}.pkl",
     # "seq_default_n_6_seed_1.pkl",
     "rb",
 ) as file:
@@ -47,7 +47,7 @@ for i in range(n):
 
 ylim = 3000
 axs[0].fill_between(
-    np.linspace(0, 100, 100),
+    np.linspace(0, plot_len, plot_len),
     ylim * np.ones(violations.shape),
     where=(violations > 0),
     color="red",
