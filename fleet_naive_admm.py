@@ -1,5 +1,5 @@
 import pickle
-
+from datetime import datetime
 import gurobipy as gp
 import matplotlib.pyplot as plt
 import numpy as np
@@ -373,7 +373,7 @@ class ADMMCoordinator(MldAgent):
                     self.agents[i].mpc.set_back_vars(self.y_back_list[i], x_pred_behind)
 
         for t in range(self.admm_iters):
-            # print(f'admm iter {t}')
+            print(f'admm iter {t} at {datetime.now()}')
             # admm x-update
             for i in range(self.n):
                 xl = state[
