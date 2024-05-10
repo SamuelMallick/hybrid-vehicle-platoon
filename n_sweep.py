@@ -5,35 +5,26 @@ from fleet_naive_admm import simulate as sim_admm
 from fleet_seq_mld import simulate as sim_seq
 from misc.common_controller_params import Sim_n_task_1, Sim_n_task_2
 
-task_1 = True
 thread_limit = 5
 seed_range = [i for i in range(10)]
 
-for n in range(2, 11):
+for N in range(2, 6):
     for seed in seed_range:
-        if task_1:
-            sim = Sim_n_task_1(n)
-        else:
-            sim = Sim_n_task_2(n, seed=seed)
-        try:
-            sim_admm(
-                sim,
-                admm_iters=20,
-                save=True,
-                plot=False,
-                seed=seed,
-                thread_limit=thread_limit,
-            )
-        except:
-            pass
+        sim = Sim_n_task_2(n=6, N=N, seed=seed)
         try:
             sim_cent(sim, save=True, plot=False, seed=seed, thread_limit=thread_limit)
         except:
             pass
+for N in range(2, 6):
+    for seed in seed_range:
+        sim = Sim_n_task_2(n=6, N=N, seed=seed)
         try:
             sim_seq(sim, save=True, plot=False, seed=seed, thread_limit=thread_limit)
         except:
             pass
+for N in range(2, 6):
+    for seed in seed_range:
+        sim = Sim_n_task_2(n=6, N=N, seed=seed)
         try:
             sim_decent(
                 sim,
@@ -41,7 +32,7 @@ for n in range(2, 11):
                 plot=False,
                 seed=seed,
                 thread_limit=thread_limit,
-                velocity_estimator=False,
+                velocity_estimator='none',
             )
         except:
             pass
@@ -52,33 +43,13 @@ for n in range(2, 11):
                 plot=False,
                 seed=seed,
                 thread_limit=thread_limit,
-                velocity_estimator=True,
+                velocity_estimator='sat',
             )
         except:
             pass
-        try:
-            sim_admm(
-                sim,
-                admm_iters=5,
-                save=True,
-                plot=False,
-                seed=seed,
-                thread_limit=thread_limit,
-            )
-        except:
-            pass
-
-        try:
-            sim_admm(
-                sim,
-                admm_iters=50,
-                save=True,
-                plot=False,
-                seed=seed,
-                thread_limit=thread_limit,
-            )
-        except:
-            pass
+for N in range(2, 6):
+    for seed in seed_range:
+        sim = Sim_n_task_2(n=6, N=N, seed=seed)
         try:
             sim_event(
                 sim,
@@ -94,6 +65,34 @@ for n in range(2, 11):
             sim_event(
                 sim,
                 event_iters=10,
+                save=True,
+                plot=False,
+                seed=seed,
+                thread_limit=thread_limit,
+            )
+        except:
+            pass
+for N in range(2, 6):
+    for seed in seed_range:
+        sim = Sim_n_task_2(n=6, N=N, seed=seed)
+        try:
+            sim_admm(
+                sim,
+                admm_iters=50,
+                save=True,
+                plot=False,
+                seed=seed,
+                thread_limit=thread_limit,
+            )
+        except:
+            pass
+for N in range(2, 6):
+    for seed in seed_range:
+        sim = Sim_n_task_2(n=6, N=N, seed=seed)
+        try:
+            sim_admm(
+                sim,
+                admm_iters=20,
                 save=True,
                 plot=False,
                 seed=seed,
