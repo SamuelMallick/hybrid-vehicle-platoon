@@ -43,6 +43,7 @@ class LocalMpc(MpcMldCentDecup):
         num_vehicles_in_front: int,
         num_vehicles_behind: int,
         spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
+        rel_leader_index: int | None = None,
         quadratic_cost: bool = True,
         thread_limit: int | None = None,
         accel_cnstr_tightening: float = 0.0,
@@ -63,6 +64,7 @@ class LocalMpc(MpcMldCentDecup):
             num_vehicles_in_front,
             num_vehicles_behind,
             spacing_policy,
+            rel_leader_index,
             quadratic_cost,
             accel_cnstr_tightening,
         )
@@ -73,6 +75,7 @@ class LocalMpc(MpcMldCentDecup):
         num_vehicles_in_front: int,
         num_vehicles_behind: int,
         spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
+        rel_leader_index: int | None = None,
         quadratic_cost: bool = True,
         accel_cnstr_tightening: float = 0.0,
     ):
@@ -101,6 +104,11 @@ class LocalMpc(MpcMldCentDecup):
         x_l = [self.x[i * nx_l : (i + 1) * nx_l, :] for i in range(self.n)]
         u_l = [u[i * self.nu_l : (i + 1) * self.nu_l, :] for i in range(self.n)]
 
+        if rel_leader_index is not None:
+            self.leader_x = self.mpc_model.addMVar(
+                (nx_l, self.N + 1), lb=0, ub=0, name="leader_x"
+            )
+
         # slack vars for constraints with vehicles in front and behind
         self.s_f1 = self.mpc_model.addMVar(
             (self.N + 1), lb=0, ub=float("inf"), name="s_f1"
@@ -116,9 +124,6 @@ class LocalMpc(MpcMldCentDecup):
         )
         # set these slacks to 0 if no associated vehilces. Also create state copies for vehicles 1 neighbor away
         if num_vehicles_in_front < 2:
-            self.leader_x = self.mpc_model.addMVar(
-                (nx_l, self.N + 1), lb=0, ub=0, name="leader_x"
-            )
             self.s_f2.ub = 0
             if num_vehicles_in_front < 1:
                 self.s_f1.ub = 0
@@ -137,45 +142,47 @@ class LocalMpc(MpcMldCentDecup):
 
         # cost func
         cost = 0
-        # tracking cost for vehicles in front
-        if num_vehicles_in_front == 0:  # leader
-            cost += sum(
-                [
+        # leader tracking cost
+        if rel_leader_index is not None:
+            if rel_leader_index == -1:
+                cost += sum(
+                    self.cost_func(x_b1[:, [k]] - self.leader_x[:, [k]], self.Q_x)
+                    for k in range(self.N + 1)
+                )
+            elif rel_leader_index == 0:
+                cost += sum(
                     self.cost_func(x_me[:, [k]] - self.leader_x[:, [k]], self.Q_x)
                     for k in range(self.N + 1)
-                ]
-            )
-        elif num_vehicles_in_front == 1:  # vehicle behind leader
-            cost += sum(
-                [
+                )
+            elif rel_leader_index == 1:
+                cost += sum(
                     self.cost_func(x_f1[:, [k]] - self.leader_x[:, [k]], self.Q_x)
-                    + self.cost_func(
-                        x_me[:, [k]]
-                        - x_f1[:, [k]]
-                        - spacing_policy.spacing(x_me[:, [k]]),
-                        self.Q_x,
-                    )
                     for k in range(self.N + 1)
-                ]
-            )
-        else:
+                )
+            else:
+                raise ValueError(
+                    f"rel leader index must be -1, 0, or 1. Got {rel_leader_index}."
+                )
+
+        # tracking cost for vehicles ahead
+        if num_vehicles_in_front > 0:
             cost += sum(
-                [
+                self.cost_func(
+                    x_me[:, [k]] - x_f1[:, [k]] - spacing_policy.spacing(x_me[:, [k]]),
+                    self.Q_x,
+                )
+                for k in range(self.N + 1)
+            )
+            if num_vehicles_in_front > 1:
+                cost += sum(
                     self.cost_func(
                         x_f1[:, [k]]
                         - self.x_f2[:, [k]]
                         - spacing_policy.spacing(x_f1[:, [k]]),
                         self.Q_x,
                     )
-                    + self.cost_func(
-                        x_me[:, [k]]
-                        - x_f1[:, [k]]
-                        - spacing_policy.spacing(x_me[:, [k]]),
-                        self.Q_x,
-                    )
                     for k in range(self.N + 1)
-                ]
-            )
+                )
         # trcking cost for vehicles behind
         if num_vehicles_behind > 0:
             cost += sum(
@@ -341,6 +348,7 @@ class LocalMpcGear(LocalMpc, MpcMldCentDecup, MpcGear):
         num_vehicles_in_front: int,
         num_vehicles_behind: int,
         spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
+        rel_leader_index: int | None = None,
         quadratic_cost: bool = True,
         thread_limit: int | None = None,
         accel_cnstr_tightening: float = 0.0,
@@ -362,6 +370,7 @@ class LocalMpcGear(LocalMpc, MpcMldCentDecup, MpcGear):
             num_vehicles_in_front,
             num_vehicles_behind,
             spacing_policy,
+            rel_leader_index,
             quadratic_cost,
             accel_cnstr_tightening,
         )
@@ -378,6 +387,7 @@ class TrackingEventBasedCoordinator(MldAgent):
         discrete_gears: bool,
         ts: float,
         event_iters: int = 4,
+        leader_index: int = 0,
     ) -> None:
         """Initialise the coordinator.
 
@@ -400,6 +410,7 @@ class TrackingEventBasedCoordinator(MldAgent):
         self.ts = ts
         self.N = N
         self.discrete_gears = discrete_gears
+        self.leader_index = leader_index
 
         # store control and state guesses
         self.state_guesses = [np.zeros((self.nx_l, N + 1)) for i in range(self.n)]
@@ -556,12 +567,12 @@ class TrackingEventBasedCoordinator(MldAgent):
             return np.vstack([self.control_guesses[i][:, [0]] for i in range(self.n)])
 
     def on_timestep_end(self, env: Env, episode: int, timestep: int) -> None:
-        self.agents[0].mpc.set_leader_x(
-            self.leader_x[:, timestep : timestep + self.N + 1]
-        )
-        self.agents[1].mpc.set_leader_x(
-            self.leader_x[:, timestep : timestep + self.N + 1]
-        )
+        leader_x = self.leader_x[:, timestep : timestep + self.N + 1]
+        self.agents[self.leader_index].mpc.set_leader_x(leader_x)
+        if self.leader_index > 0:
+            self.agents[self.leader_index - 1].mpc.set_leader_x(leader_x)
+        if self.leader_index < self.n - 1:
+            self.agents[self.leader_index + 1].mpc.set_leader_x(leader_x)
 
         # shift previous solutions to be initial guesses at next step
         for i in range(self.n):
@@ -587,8 +598,12 @@ class TrackingEventBasedCoordinator(MldAgent):
         return super().on_timestep_end(env, episode, timestep)
 
     def on_episode_start(self, env: Env, episode: int, state) -> None:
-        self.agents[0].mpc.set_leader_x(self.leader_x[:, 0 : self.N + 1])
-        self.agents[1].mpc.set_leader_x(self.leader_x[:, 0 : self.N + 1])
+        leader_x = self.leader_x[:, 0 : self.N + 1]
+        self.agents[self.leader_index].mpc.set_leader_x(leader_x)
+        if self.leader_index > 0:
+            self.agents[self.leader_index - 1].mpc.set_leader_x(leader_x)
+        if self.leader_index < self.n - 1:
+            self.agents[self.leader_index + 1].mpc.set_leader_x(leader_x)
 
         # initialise first step guesses with extrapolating positions
         for i in range(self.n):
@@ -626,6 +641,7 @@ def simulate(
     plot: bool = True,
     seed: int = 2,
     thread_limit: int | None = None,
+    leader_index: int = 0,
 ):
     n = sim.n  # num cars
     N = sim.N  # controller horizon
@@ -649,6 +665,7 @@ def simulate(
                 leader_trajectory=leader_trajectory,
                 spacing_policy=spacing_policy,
                 start_from_platoon=sim.start_from_platoon,
+                leader_index=leader_index,
             ),
             max_episode_steps=ep_len,
         )
@@ -666,9 +683,17 @@ def simulate(
                 ),
                 num_vehicles_in_front=i if i < 2 else 2,
                 num_vehicles_behind=(n - 1) - i if i > n - 3 else 2,
+                rel_leader_index=(
+                    -1
+                    if i == leader_index - 1
+                    else (
+                        0
+                        if i == leader_index
+                        else (1 if i == leader_index + 1 else None)
+                    )
+                ),
                 spacing_policy=spacing_policy,
                 thread_limit=thread_limit,
-                accel_cnstr_tightening=0.01,
             )
             for i in range(n)
         ]
@@ -684,8 +709,16 @@ def simulate(
                 ),
                 num_vehicles_in_front=i if i < 2 else 2,
                 num_vehicles_behind=(n - 1) - i if i > n - 3 else 2,
+                rel_leader_index=(
+                    -1
+                    if i == leader_index - 1
+                    else (
+                        0
+                        if i == leader_index
+                        else (1 if i == leader_index + 1 else None)
+                    )
+                ),
                 spacing_policy=spacing_policy,
-                accel_cnstr_tightening=0.05,
             )
             for i in range(n)
         ]
@@ -706,6 +739,7 @@ def simulate(
         discrete_gears=discrete_gears,
         ts=ts,
         event_iters=event_iters,
+        leader_index=leader_index,
     )
 
     agent.evaluate(env=env, episodes=1, seed=seed)
@@ -741,4 +775,4 @@ def simulate(
 
 
 if __name__ == "__main__":
-    simulate(Sim(), event_iters=2, seed=1)
+    simulate(Sim(), event_iters=2, seed=1, leader_index=3)
