@@ -13,7 +13,7 @@ from env import PlatoonEnv
 from misc.common_controller_params import Params, Sim
 from misc.spacing_policy import ConstantSpacingPolicy, SpacingPolicy
 from models import Platoon, Vehicle
-from mpcs.mpc_gear import MpcGear
+from mpcs.mpc_gear import MpcGear, MpcNonlinearGear
 from plot_fleet import plot_fleet
 
 np.random.seed(2)
@@ -39,7 +39,7 @@ class LocalMpc(MpcMldCentDecup):
     def __init__(
         self,
         N: int,
-        pwa_systems: list[dict],
+        systems: list[dict],
         num_vehicles_in_front: int,
         num_vehicles_behind: int,
         spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
@@ -51,9 +51,9 @@ class LocalMpc(MpcMldCentDecup):
         """Initialize the local MPC. This MPC optimizes also considering neighboring vehicles.
         The number of neighboring vehicles is passed in through num_vehicles_in_front/num_vehicles_behind.
         """
-        self.n = len(pwa_systems)
+        self.n = len(systems)
         super().__init__(
-            pwa_systems,
+            systems,
             self.n,
             N,
             thread_limit=thread_limit,
@@ -375,6 +375,40 @@ class LocalMpcGear(LocalMpc, MpcMldCentDecup, MpcGear):
             accel_cnstr_tightening,
         )
 
+class LocalMpcNonlinearGear(LocalMpc, MpcMldCentDecup, MpcNonlinearGear):
+    def __init__(
+        self,
+        N: int,
+        systems: list[dict],
+        num_vehicles_in_front: int,
+        num_vehicles_behind: int,
+        spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
+        rel_leader_index: int | None = None,
+        quadratic_cost: bool = True,
+        thread_limit: int | None = None,
+        accel_cnstr_tightening: float = 0.0,
+    ) -> None:
+        self.n = len(systems)
+        MpcNonlinearGear.__init__(
+            self,
+            systems,
+            N,
+            thread_limit=thread_limit,
+            constrain_first_state=False,
+        )
+        F = block_diag(*([systems[i]["F"] for i in range(self.n)]))
+        G = np.vstack([systems[i]["G"] for i in range(self.n)])
+        self.setup_gears(N, F, G)
+        self.setup_cost_and_constraints(
+            self.u_g,
+            num_vehicles_in_front,
+            num_vehicles_behind,
+            spacing_policy,
+            rel_leader_index,
+            quadratic_cost,
+            accel_cnstr_tightening,
+        )
+
 
 class TrackingEventBasedCoordinator(MldAgent):
     def __init__(
@@ -673,10 +707,21 @@ def simulate(
 
     # mpcs
     if sim.vehicle_model_type == "pwa_gear":
-        mpcs = [
-            LocalMpc(
+        mpc_class = LocalMpc
+        discrete_gears = False
+    elif sim.vehicle_model_type == "pwa_friction":
+        mpc_class = LocalMpcGear
+        discrete_gears = True
+    elif sim.vehicle_model_type == "nonlinear":
+        mpc_class = LocalMpcNonlinearGear
+        discrete_gears = True
+    else:
+        raise ValueError(f"{sim.vehicle_model_type} is not a valid vehicle model type.")
+
+    mpcs = [
+            mpc_class(
                 N,
-                pwa_systems=(
+                systems=(
                     systems[:2]
                     if i == 0
                     else (systems[-2:] if i == n - 1 else systems[i - 1 : i + 2])
@@ -697,38 +742,6 @@ def simulate(
             )
             for i in range(n)
         ]
-        discrete_gears = False
-    elif sim.vehicle_model_type == "pwa_friction":
-        mpcs = [
-            LocalMpcGear(
-                N,
-                systems=(
-                    systems[:2]
-                    if i == 0
-                    else (systems[-2:] if i == n - 1 else systems[i - 1 : i + 2])
-                ),
-                num_vehicles_in_front=i if i < 2 else 2,
-                num_vehicles_behind=(n - 1) - i if i > n - 3 else 2,
-                rel_leader_index=(
-                    -1
-                    if i == leader_index - 1
-                    else (
-                        0
-                        if i == leader_index
-                        else (1 if i == leader_index + 1 else None)
-                    )
-                ),
-                spacing_policy=spacing_policy,
-            )
-            for i in range(n)
-        ]
-        discrete_gears = True
-    elif sim.vehicle_model_type == "nonlinear":
-        discrete_gears = True
-        raise NotImplementedError()
-    else:
-        raise ValueError(f"{sim.vehicle_model_type} is not a valid vehicle model type.")
-
     # agent
     agent = TrackingEventBasedCoordinator(
         mpcs,
@@ -775,4 +788,4 @@ def simulate(
 
 
 if __name__ == "__main__":
-    simulate(Sim(), event_iters=2, seed=1, leader_index=3)
+    simulate(Sim(), event_iters=2, seed=1, leader_index=0)
