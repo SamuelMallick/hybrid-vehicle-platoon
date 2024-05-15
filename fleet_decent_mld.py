@@ -345,6 +345,21 @@ class TrackingDecentMldCoordinator(MldAgent):
             x_pred[0, [k + 1]] = x_pred[0, [k]] + self.ts * x_pred[1, [k]]
             x_pred[1, [k + 1]] = x_pred[1, [k]] + dv
         return x_pred
+    
+    def extrapolate_position_two_point_estimator_saturated(
+        self, initial_pos: float, initial_vel: float, previous_vel: float
+    ):
+        x_pred = np.zeros((self.nx_l, self.N + 1))
+        x_pred[0, [0]] = initial_pos
+        x_pred[1, [0]] = initial_vel
+        dv = initial_vel - previous_vel
+        for k in range(int(np.floor(self.N/2))):
+            x_pred[0, [k + 1]] = x_pred[0, [k]] + self.ts * x_pred[1, [k]]
+            x_pred[1, [k + 1]] = x_pred[1, [k]] + dv
+        for k in range(int(np.floor(self.N/2)), self.N):
+            x_pred[0, [k + 1]] = x_pred[0, [k]] + self.ts * x_pred[1, [k]]
+            x_pred[1, [k + 1]] = x_pred[1, [k]]
+        return x_pred
 
 
 def simulate(
