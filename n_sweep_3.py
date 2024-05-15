@@ -8,10 +8,23 @@ from misc.common_controller_params import Sim_n_task_2
 thread_limit = 5
 seed_range = [i for i in range(1)]
 
-for n in range(7, 11):
+for n in range(3, 11):
+    lead_range = [i for i in range(2, n)] if n == 3 else [i for i in range(n)]
     for seed in seed_range:
-        for leader_index in [i for i in range(n)]:
+        for leader_index in lead_range:
             sim = Sim_n_task_2(n, seed=seed, leader_index=leader_index)
+            try:
+                sim_admm(
+                    sim,
+                    admm_iters=20,
+                    save=True,
+                    plot=False,
+                    seed=seed,
+                    thread_limit=thread_limit,
+                    leader_index=leader_index,
+                )
+            except:
+                pass
             try:
                 sim_cent(
                     sim,
@@ -70,18 +83,7 @@ for n in range(7, 11):
             #     )
             # except:
             #     pass
-            try:
-                sim_admm(
-                    sim,
-                    admm_iters=20,
-                    save=True,
-                    plot=False,
-                    seed=seed,
-                    thread_limit=thread_limit,
-                    leader_index=leader_index,
-                )
-            except:
-                pass
+            
             # try:
             #     sim_admm(
             #         sim,

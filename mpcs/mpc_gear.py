@@ -11,7 +11,7 @@ class MpcGear(MpcMld):
     each control signal are assumed decoupled.
     The dynamics are provided as a PWA system dict."""
 
-    def __init__(self, system: dict, N: int, thread_limit: int | None = None) -> None:
+    def __init__(self, system: dict, N: int, thread_limit: int | None = None, constrain_first_state: bool = False) -> None:
         """Init the MLD model of PWA system and the MPC wit hdiscrete inputs.
         Parameters
         ----------
@@ -24,7 +24,7 @@ class MpcGear(MpcMld):
 
         # init the PWA system - MLD constraints and binary variables for PWA dynamics
         super().__init__(
-            system, N, thread_limit=thread_limit, constrain_first_state=False
+            system, N, thread_limit=thread_limit, constrain_first_state=constrain_first_state
         )
 
     def setup_gears(self, N: int, F: np.ndarray, G: np.ndarray):
@@ -137,7 +137,7 @@ class MpcNonlinearGear(MpcGear):
     """An MPC controller than uses a nonlinear vehicle model along with discrete gear inputs x^+ = f(x) + B(j,x)u."""
 
     def __init__(
-        self, systems: list[dict], N: int, thread_limit: int | None = None
+        self, systems: list[dict], N: int, thread_limit: int | None = None, constrain_first_state: bool = False
     ) -> None:
         """Instantiate mixed-integer model for nonlinear dynamics for len(systems) systems."""
         # build mixed-integer model
@@ -181,7 +181,7 @@ class MpcNonlinearGear(MpcGear):
             (
                 systems[i]["D"] @ x_l[i][:, [k]] <= systems[i]["E"]
                 for i in range(n)
-                for k in range(N + 1)
+                for k in range(0 if constrain_first_state else 1, N + 1)
             ),
             name="state constraints",
         )

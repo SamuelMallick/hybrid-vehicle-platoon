@@ -28,28 +28,15 @@ class Sim:
     vehicle_model_type: Literal["nonlinear", "pwa_friction", "pwa_gear"] = "pwa_gear"
     start_from_platoon: bool = False
     quadratic_cost: bool = True
-    n = 4
-    N = 6
-    ep_len = 150
-    # spacing_policy = ConstantSpacingPolicy(50)
-    # leader_trajectory = ConstantVelocityLeaderTrajectory(
-    #     p=3000, v=20, trajectory_len=ep_len + 50, ts=Params.ts
-    # )
-    # leader_trajectory = VolatileTrajectory(
-    #     p=3100, trajectory_len=ep_len + 50, ts=Params.ts
-    # )
-    spacing_policy = ConstantTimePolicy(10, 3)
-    leader_trajectory = StopAndGoLeaderTrajectory(
-        p=3000,
-        vh=20,
-        vl=10,
-        vf=30,
-        v_change_steps=[30, 50],
-        trajectory_len=ep_len + 50,
-        ts=Params.ts,
+    n = 2
+    N = 3
+    ep_len = 100
+    spacing_policy = ConstantSpacingPolicy(50)
+    leader_trajectory = ConstantVelocityLeaderTrajectory(
+        p=3000, v=20, trajectory_len=ep_len + 50, ts=Params.ts
     )
     masses = None
-    id = f"default_n_{n}_N_{N}"
+    id = f"default_n_{n}_N_{N}_disc_steps_1"
 
 
 class Sim_n_task_1(Sim):

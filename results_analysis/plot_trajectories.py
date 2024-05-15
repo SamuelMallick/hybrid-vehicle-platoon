@@ -11,13 +11,14 @@ plt.style.use("bmh")
 
 nx_l = 2
 plot_len = 150
-name = "seq"
-n = 4
+name = "decent_vest_False"
+n = 9
 seed = 0
-N=6
+N = 6
 
 with open(
-    f"data/multi_leader/{name}_task_2_n_{n}_N_{N}_lead_{2}_seed_{seed}.pkl",
+    f"data/{name}_task_2_n_{n}_N_{N}_seed_{seed}.pkl",
+    # f"data/multi_leader/{name}_task_2_n_{n}_N_{N}_lead_5_seed_{seed}.pkl",
     # "seq_default_n_6_seed_1.pkl",
     "rb",
 ) as file:

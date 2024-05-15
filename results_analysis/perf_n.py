@@ -10,19 +10,21 @@ plt.style.use("bmh")
 
 nx_l = 2
 
+harmonic_mean = False
+
 types = [
     "cent",
     "decent_vest_False",
-    "decent_vest_True",
-    "seq",
+    # "decent_vest_True",
+    # "seq",
     # "event_1",
-    "event_5",
+    # "event_5",
     # "event_10",
     # "admm_5",
     # "admm_20",
     # "admm_50",
 ]
-seeds = [i for i in range(2)]
+seeds = [i for i in range(9)]
 # seeds = [i for i in range(7)] + [i for i in range(50, 57)] + [i for i in range(100, 107)]
 leg = [
     "decent",
@@ -31,15 +33,15 @@ leg = [
     # "event_1",
     "event_5",
     "event_10",
-    # "admm_5",
-    # "admm_20",
-    # "admm_50",
+    "admm_5",
+    "admm_20",
+    "admm_50",
 ]
 num_seq_vars = 3
-num_event_vars = 1
-num_admm_vars = 0
+num_event_vars = 2
+num_admm_vars = 3
 
-n_sw = [i for i in range(2, 5)]
+n_sw = [i for i in range(2, 9)]
 N = 6
 
 track_costs = []
@@ -64,55 +66,70 @@ for type in types:
         nodes[counter].append([])
         viols[counter].append([])
         for seed in seeds:
-            for lead in [i for i in range(n)]:
-                try:
-                    with open(
-                        f"data/multi_leader/{type}_task_2_n_{n}_N_{N}_lead_{lead}_seed_{seed}.pkl",
-                        # f"data/{type}_task_2_n_{n}_N_{N}_q_0.2_seed_{seed}.pkl",
-                        "rb",
-                    ) as file:
-                        X = pickle.load(file)
-                        U = pickle.load(file)
-                        R = pickle.load(file)
-                        solve_times = pickle.load(file)
-                        node_counts = pickle.load(file)
-                        violations = pickle.load(file)
-                        leader_state = pickle.load(file)
+            try:
+                with open(
+                    f"data/{type}_task_2_n_{n}_N_{N}_seed_{seed}.pkl",
+                    # f"data/{type}_task_2_n_{n}_N_{N}_q_0.2_seed_{seed}.pkl",
+                    "rb",
+                ) as file:
+                    X = pickle.load(file)
+                    U = pickle.load(file)
+                    R = pickle.load(file)
+                    solve_times = pickle.load(file)
+                    node_counts = pickle.load(file)
+                    violations = pickle.load(file)
+                    leader_state = pickle.load(file)
 
-                    track_costs[counter][-1].append(sum(R)[0, 0])
-                    time_min[counter][-1].append(min(solve_times)[0])
-                    time_max[counter][-1].append(max(solve_times)[0])
-                    time_av[counter][-1].append(sum(solve_times)[0] / len(solve_times))
-                    nodes[counter][-1].append(max(node_counts)[0])
-                    viols[counter][-1].append(sum(violations) / 100)
-                except:
-                    print(f"no seed {seed}")
-        track_costs[counter][-1] = statistics.harmonic_mean(track_costs[counter][-1])
-        time_min[counter][-1] = statistics.harmonic_mean(time_min[counter][-1])
-        time_max[counter][-1] = statistics.harmonic_mean(time_max[counter][-1])
-        time_av[counter][-1] = statistics.harmonic_mean(time_av[counter][-1])
-        nodes[counter][-1] = statistics.harmonic_mean(nodes[counter][-1])
-        viols[counter][-1] = statistics.harmonic_mean(viols[counter][-1])
+                track_costs[counter][-1].append(sum(R)[0, 0])
+                time_min[counter][-1].append(min(solve_times)[0])
+                time_max[counter][-1].append(max(solve_times)[0])
+                time_av[counter][-1].append(sum(solve_times)[0] / len(solve_times))
+                nodes[counter][-1].append(max(node_counts)[0])
+                viols[counter][-1].append(sum(violations) / 100)
+            except:
+                print(f"no seed {seed}")
+        if harmonic_mean:
+            track_costs[counter][-1] = statistics.harmonic_mean(
+                track_costs[counter][-1]
+            )
+            time_min[counter][-1] = statistics.harmonic_mean(time_min[counter][-1])
+            time_max[counter][-1] = statistics.harmonic_mean(time_max[counter][-1])
+            time_av[counter][-1] = statistics.harmonic_mean(time_av[counter][-1])
+            nodes[counter][-1] = statistics.harmonic_mean(nodes[counter][-1])
+            viols[counter][-1] = statistics.harmonic_mean(viols[counter][-1])
+        else:
+            track_costs[counter][-1] = sum(track_costs[counter][-1]) / len(
+                track_costs[counter][-1]
+            )
+            time_min[counter][-1] = sum(time_min[counter][-1]) / len(
+                time_min[counter][-1]
+            )
+            time_max[counter][-1] = sum(time_max[counter][-1]) / len(
+                time_max[counter][-1]
+            )
+            time_av[counter][-1] = sum(time_av[counter][-1]) / len(time_av[counter][-1])
+            nodes[counter][-1] = sum(nodes[counter][-1]) / len(nodes[counter][-1])
+            viols[counter][-1] = sum(viols[counter][-1]) / len(viols[counter][-1])
     counter += 1
 
 
 # plotting params for all figs
 lw = 1.5  # line width
 ms = 5  # marker size
-mf = ["-x", "-o", "-o", ":v", ":v", "--s", "--s", "--s"]  # marker format
+mf = ["-x", "-o", "-o","-o", ":v", ":v",":v", "--s", "--s", "--s"]  # marker format
 
 # tracking cost as percentrage performance drop from centralized
 perf_drop = []
 for i in range(1, counter):
-    perf_drop.append(
-        [
-            100 * (track_costs[i][j] - track_costs[0][j]) / track_costs[0][j]
-            for j in range(len(track_costs[0]))
-        ]
-    )
     # perf_drop.append(
-    #     [(track_costs[i][j] - track_costs[0][j]) for j in range(len(track_costs[0]))]
+    #     [
+    #         100 * (track_costs[i][j] - track_costs[0][j]) / track_costs[0][j]
+    #         for j in range(len(track_costs[0]))
+    #     ]
     # )
+    perf_drop.append(
+        [(track_costs[i][j] - track_costs[0][j]) for j in range(len(track_costs[0]))]
+    )
     # perf_drop.append(
     #     [
     #         (track_costs[i][j] - track_costs[0][j]) / ((j+2)*track_costs[0][j])
@@ -222,6 +239,7 @@ for i in range(len(perf_drop)):
         color=f"C{i}",
         markerfacecolor="none",
     )
+
 
 _, axs = plt.subplots(3, 1, constrained_layout=True, sharex=True)
 for i in range(num_seq_vars):
