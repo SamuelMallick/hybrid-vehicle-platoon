@@ -24,6 +24,7 @@ class MpcMldCent(MpcMldCentDecup):
         N: int,
         pwa_systems: list[dict],
         spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
+        leader_index: int = 0,
         quadratic_cost: bool = True,
         thread_limit: int | None = None,
         accel_cnstr_tightening: float = 0.0,
@@ -38,6 +39,7 @@ class MpcMldCent(MpcMldCentDecup):
         self.setup_cost_and_constraints(
             self.u,
             spacing_policy,
+            leader_index,
             quadratic_cost,
             accel_cnstr_tightening,
             real_vehicle_as_reference,
@@ -47,6 +49,7 @@ class MpcMldCent(MpcMldCentDecup):
         self,
         u,
         spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
+        leader_index: int = 0,
         quadratic_cost: bool = True,
         accel_cnstr_tightening: float = 0.0,
         real_vehicle_as_reference: bool = False,
@@ -56,6 +59,11 @@ class MpcMldCent(MpcMldCentDecup):
             self.cost_func = self.min_2_norm
         else:
             self.cost_func = self.min_1_norm
+
+        if leader_index != 0 and real_vehicle_as_reference:
+            raise NotImplementedError(
+                f"Not implemented for real vehicle with leader not 0."
+            )
 
         nx_l = Vehicle.nx_l
         nu_l = Vehicle.nu_l
@@ -77,7 +85,9 @@ class MpcMldCent(MpcMldCentDecup):
         if not real_vehicle_as_reference:
             cost += sum(
                 [
-                    self.cost_func(x_l[0][:, [k]] - self.leader_traj[:, [k]], self.Q_x)
+                    self.cost_func(
+                        x_l[leader_index][:, [k]] - self.leader_traj[:, [k]], self.Q_x
+                    )
                     for k in range(self.N + 1)
                 ]
             )

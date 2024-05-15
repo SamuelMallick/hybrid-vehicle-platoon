@@ -11,6 +11,8 @@ plt.style.use("bmh")
 nx_l = 2
 harmonic_mean = False
 
+harmonic_mean = False
+
 types = [
     # "cent",
     # "decent_vest_False",
@@ -88,21 +90,29 @@ for type in types:
                 nodes[counter][-1].append(max(node_counts)[0])
                 viols[counter][-1].append(sum(violations) / 100)
             else:
-                missing_seeds.append(seed)
+                print(f"no seed {seed}")
         if harmonic_mean:
-            track_costs[counter][-1] = statistics.harmonic_mean(track_costs[counter][-1])
+            track_costs[counter][-1] = statistics.harmonic_mean(
+                track_costs[counter][-1]
+            )
             time_min[counter][-1] = statistics.harmonic_mean(time_min[counter][-1])
             time_max[counter][-1] = statistics.harmonic_mean(time_max[counter][-1])
             time_av[counter][-1] = statistics.harmonic_mean(time_av[counter][-1])
             nodes[counter][-1] = statistics.harmonic_mean(nodes[counter][-1])
             viols[counter][-1] = statistics.harmonic_mean(viols[counter][-1])
         else:
-            track_costs[counter][-1] = sum(track_costs[counter][-1])/len(track_costs[counter][-1])
-            time_min[counter][-1] = sum(time_min[counter][-1])/len(time_min[counter][-1])
-            time_max[counter][-1] = sum(time_max[counter][-1])/len(time_max[counter][-1])
-            time_av[counter][-1] = sum(time_av[counter][-1])/len(time_av[counter][-1])
-            nodes[counter][-1] = sum(nodes[counter][-1])/len(nodes[counter][-1])
-            viols[counter][-1] = sum(viols[counter][-1])/len(viols[counter][-1])
+            track_costs[counter][-1] = sum(track_costs[counter][-1]) / len(
+                track_costs[counter][-1]
+            )
+            time_min[counter][-1] = sum(time_min[counter][-1]) / len(
+                time_min[counter][-1]
+            )
+            time_max[counter][-1] = sum(time_max[counter][-1]) / len(
+                time_max[counter][-1]
+            )
+            time_av[counter][-1] = sum(time_av[counter][-1]) / len(time_av[counter][-1])
+            nodes[counter][-1] = sum(nodes[counter][-1]) / len(nodes[counter][-1])
+            viols[counter][-1] = sum(viols[counter][-1]) / len(viols[counter][-1])
     counter += 1
 missing_seeds = list(dict.fromkeys(missing_seeds))
 print(f'missing seeds: {missing_seeds}')
@@ -169,61 +179,61 @@ error_upper = [
 # axs[1].set_ylabel(r"$\%J$")
 # # axs[1].set_ylim(-25, y_lim)
 
-# y_lim = 0.3
-# for i in range(1, 4):
-#     _, _, bars = axs[2].errorbar(
-#         np.asarray([n_sw[j] + 0.0 * i for j in range(len(n_sw))]),
-#         np.asarray(time_av[i]),
-#         yerr=[np.asarray(error_lower[i]), np.asarray(error_upper[i])],
-#         linewidth=lw,
-#         markersize=ms,
-#         color=f"C{i-1}",
-#         fmt=mf[i],
-#         capsize=4,
-#         markerfacecolor="none",
-#     )
-#     [bar.set_alpha(0.7) for bar in bars]
-# # axs[2].set_ylim(-0.1, y_lim)
-# axs[2].set_ylabel("$t_{COMP}$")
-# y_lim = 6
-# for i in range(4, 4 + num_event_vars):
-#     _, _, bars = axs[3].errorbar(
-#         np.asarray([n_sw[j] + 0.0 * i for j in range(len(n_sw))]),
-#         np.asarray(time_av[i]),
-#         yerr=[np.asarray(error_lower[i]), np.asarray(error_upper[i])],
-#         linewidth=lw,
-#         markersize=ms,
-#         color=f"C{i-1}",
-#         fmt=mf[i],
-#         capsize=4,
-#         markerfacecolor="none",
-#     )
-#     [bar.set_alpha(0.7) for bar in bars]
-# # axs[3].set_ylim(-0.1, y_lim)
-# axs[3].set_ylabel("$t_{COMP}$")
-# y_lim = 3.5
-# for i in range(4 + num_event_vars, 4 + num_event_vars + num_admm_vars):
-#     _, _, bars = axs[4].errorbar(
-#         np.asarray([n_sw[j] + 0.0 * i for j in range(len(n_sw))]),
-#         np.asarray(time_av[i]),
-#         yerr=[np.asarray(error_lower[i]), np.asarray(error_upper[i])],
-#         linewidth=lw,
-#         markersize=ms,
-#         color=f"C{i-1}",
-#         fmt=mf[i],
-#         capsize=4,
-#         markerfacecolor="none",
-#     )
-#     [bar.set_alpha(0.7) for bar in bars]
-# axs[4].set_ylabel("$t_{COMP}$")
-# # axs[4].set_ylim(-0.1, y_lim)
-# for i in range(1, counter):
-#     axs[5].plot(
-#         n_sw, nodes[i], mf[i], linewidth=lw, markersize=ms, markerfacecolor="none"
-#     )
-# axs[5].set_ylabel(r"$\#nodes$")
-# axs[5].set_yscale("log")
-# axs[5].set_xlabel("$n$")
+y_lim = 0.3
+for i in range(1, 4):
+    _, _, bars = axs[2].errorbar(
+        np.asarray([n_sw[j] + 0.0 * i for j in range(len(n_sw))]),
+        np.asarray(time_av[i]),
+        yerr=[np.asarray(error_lower[i]), np.asarray(error_upper[i])],
+        linewidth=lw,
+        markersize=ms,
+        color=f"C{i-1}",
+        fmt=mf[i],
+        capsize=4,
+        markerfacecolor="none",
+    )
+    [bar.set_alpha(0.7) for bar in bars]
+# axs[2].set_ylim(-0.1, y_lim)
+axs[2].set_ylabel("$t_{COMP}$")
+y_lim = 6
+for i in range(4, 4 + num_event_vars):
+    _, _, bars = axs[3].errorbar(
+        np.asarray([n_sw[j] + 0.0 * i for j in range(len(n_sw))]),
+        np.asarray(time_av[i]),
+        yerr=[np.asarray(error_lower[i]), np.asarray(error_upper[i])],
+        linewidth=lw,
+        markersize=ms,
+        color=f"C{i-1}",
+        fmt=mf[i],
+        capsize=4,
+        markerfacecolor="none",
+    )
+    [bar.set_alpha(0.7) for bar in bars]
+# axs[3].set_ylim(-0.1, y_lim)
+axs[3].set_ylabel("$t_{COMP}$")
+y_lim = 3.5
+for i in range(4 + num_event_vars, 4 + num_event_vars + num_admm_vars):
+    _, _, bars = axs[4].errorbar(
+        np.asarray([n_sw[j] + 0.0 * i for j in range(len(n_sw))]),
+        np.asarray(time_av[i]),
+        yerr=[np.asarray(error_lower[i]), np.asarray(error_upper[i])],
+        linewidth=lw,
+        markersize=ms,
+        color=f"C{i-1}",
+        fmt=mf[i],
+        capsize=4,
+        markerfacecolor="none",
+    )
+    [bar.set_alpha(0.7) for bar in bars]
+axs[4].set_ylabel("$t_{COMP}$")
+# axs[4].set_ylim(-0.1, y_lim)
+for i in range(1, counter):
+    axs[5].plot(
+        n_sw, nodes[i], mf[i], linewidth=lw, markersize=ms, markerfacecolor="none"
+    )
+axs[5].set_ylabel(r"$\#nodes$")
+axs[5].set_yscale("log")
+axs[5].set_xlabel("$n$")
 # # save2tikz(plt.gcf())
 
 _, axs = plt.subplots(1, 1, constrained_layout=True, sharex=True)
@@ -238,6 +248,7 @@ for i in range(len(perf_drop)):
         color=f"C{i}",
         markerfacecolor="none",
     )
+
 
 _, axs = plt.subplots(3, 1, constrained_layout=True, sharex=True)
 for i in range(num_seq_vars):

@@ -28,6 +28,7 @@ class PlatoonEnv(gym.Env[npt.NDArray[np.floating], npt.NDArray[np.floating]]):
         self,
         n: int,
         platoon: Platoon,
+        leader_index: int = 0,
         ep_len: int = 100,
         ts: float = 1,
         leader_trajectory: LeaderTrajectory = ConstantVelocityLeaderTrajectory(
@@ -41,6 +42,7 @@ class PlatoonEnv(gym.Env[npt.NDArray[np.floating], npt.NDArray[np.floating]]):
     ) -> None:
         super().__init__()
 
+        self.leader_index = leader_index
         self.platoon = platoon
         self.ts = ts
         self.n = n
@@ -54,6 +56,11 @@ class PlatoonEnv(gym.Env[npt.NDArray[np.floating], npt.NDArray[np.floating]]):
             self.cost_func = self.quad_cost
         else:
             self.cost_func = self.lin_cost
+
+        if leader_index != 0 and real_vehicle_as_reference:
+            raise NotImplementedError(
+                f"Not implemented for real vehicle with leader not 0."
+            )
 
         self.previous_action: np.ndarray | None = (
             None  # store previous action to penalise variation
@@ -134,7 +141,7 @@ class PlatoonEnv(gym.Env[npt.NDArray[np.floating], npt.NDArray[np.floating]]):
         # tracking cost
         if not self.real_vehicle_as_reference:
             cost += self.cost_func(
-                x[0] - self.leader_x[:, [self.step_counter]], self.Q_x
+                x[self.leader_index] - self.leader_x[:, [self.step_counter]], self.Q_x
             )  # first vehicle tracking leader trajectory
         else:
             cost += self.cost_func(
