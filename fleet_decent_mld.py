@@ -12,7 +12,7 @@ from env import PlatoonEnv
 from misc.common_controller_params import Params, Sim
 from misc.spacing_policy import ConstantSpacingPolicy, SpacingPolicy
 from models import Platoon, Vehicle
-from mpcs.mpc_gear import MpcGear
+from mpcs.mpc_gear import MpcGear, MpcNonlinearGear
 from plot_fleet import plot_fleet
 
 np.random.seed(2)
@@ -238,9 +238,38 @@ class LocalMpcGear(LocalMpcMld, MpcGear):
         real_vehicle_as_reference: bool = False,
     ) -> None:
         MpcGear.__init__(
-            self, pwa_system, N, thread_limit=thread_limit, constrain_first_state=False
+            self, pwa_system, N, thread_limit=thread_limit
         )
         self.setup_gears(N, pwa_system["F"], pwa_system["G"])
+        self.setup_cost_and_constraints(
+            self.u_g,
+            spacing_policy,
+            quadratic_cost,
+            is_front,
+            is_leader,
+            is_trailer,
+            accel_cnstr_tightening,
+            real_vehicle_as_reference,
+        )
+
+class LocalMpcNonlinearGear(LocalMpcMld, MpcNonlinearGear):
+    def __init__(
+        self,
+        N: int,
+        nonlinear_system: dict,
+        spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
+        quadratic_cost: bool = True,
+        is_front: bool = False,
+        is_leader: bool = False,
+        is_trailer: bool = False,
+        thread_limit: int | None = None,
+        accel_cnstr_tightening: float = 0.0,
+        real_vehicle_as_reference: bool = False,
+    ) -> None:
+        MpcNonlinearGear.__init__(
+            self, [nonlinear_system], N, thread_limit=thread_limit
+        )
+        self.setup_gears(N, nonlinear_system["F"], nonlinear_system["G"])
         self.setup_cost_and_constraints(
             self.u_g,
             spacing_policy,
@@ -472,7 +501,7 @@ def simulate(
     elif sim.vehicle_model_type == "pwa_friction":
         mpc_class = LocalMpcGear
     elif sim.vehicle_model_type == "nonlinear":
-        raise NotImplementedError()
+        mpc_class = LocalMpcNonlinearGear
     else:
         raise ValueError(f"{sim.vehicle_model_type} is not a valid vehicle model type.")
     mpcs = [
