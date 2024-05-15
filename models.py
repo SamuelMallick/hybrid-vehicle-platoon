@@ -157,6 +157,43 @@ class Vehicle:
             "F": F,
             "G": G,
         }
+    
+    def get_gear_from_velocity(self, v: float):
+        """Get a gear j that is valid for the velocity v."""
+        if v < self.v_min or v > self.v_max:
+            warnings.warn(
+                f"Velocity {v} is not within bounds {self.v_min}/{self.v_max}"
+            )
+            if v < self.v_min:  # return first gear if velocity is below min
+                return 1
+            if v > self.v_max:  # last gear if above max
+                return 6
+        for i in range(len(self.b)):
+            if v > self.vl[i] and v < self.vh[i]:  # return first valid gear found
+                return i + 1
+        raise ValueError(f"No gear found for velocity {v}")
+
+    def get_u_for_constant_vel(self, v: float, j: int):
+        """Get the control input which will keep the velocity v constant with gear j, as by the nonlinear cont time dynamics."""
+        x = np.array([[0], [v]])  # first state does not matter for this pwa sys
+        u = np.array([[0]])  # neither does control
+
+        if j < 1 or j > 6:
+            raise ValueError(f"{j} is not a valid gear.")
+
+        j = j - 1
+        if v < self.v_min and j == 0:
+            warnings.warn(
+                f"Velocity {v} is below min {self.v_min}, using first gear but result will be approximate."
+            )
+        elif v > self.v_max and j == 5:
+            warnings.warn(
+                f"Velocity {v} is above max {self.v_max}, using last gear but result will be approximate."
+            )
+        elif v < self.vl[j] or v > self.vh[j]:
+            raise ValueError(f"Velocity {v} is not valid for gear {j+1}")
+
+        return (self.c_fric*v*v + self.mu*self.m*self.grav)/(self.b[j])
 
 
 class Platoon:
@@ -205,7 +242,7 @@ class Platoon:
         ):
             raise ValueError(f"Dimension error in x, u, or j.")
 
-        num_steps = 10  # number of sub-steps of nonlinear model within ts
+        num_steps = 1  # number of sub-steps of nonlinear model within ts
         DT = ts / num_steps
         for _ in range(num_steps):
             # split global vars into list of local
@@ -293,21 +330,6 @@ class PwaFrictionVehicle(Vehicle):
             "F": F,
             "G": G,
         }
-
-    def get_gear_from_velocity(self, v: float):
-        """Get a gear j that is valid for the velocity v."""
-        if v < self.v_min or v > self.v_max:
-            warnings.warn(
-                f"Velocity {v} is not within bounds {self.v_min}/{self.v_max}"
-            )
-            if v < self.v_min:  # return first gear if velocity is below min
-                return 1
-            if v > self.v_max:  # last gear if above max
-                return 6
-        for i in range(len(self.b)):
-            if v > self.vl[i] and v < self.vh[i]:  # return first valid gear found
-                return i + 1
-        raise ValueError(f"No gear found for velocity {v}")
 
     def get_u_for_constant_vel(self, v: float, j: int):
         """Get the control input which will keep the velocity v constant with gear j, as by the PWA dynamics."""
