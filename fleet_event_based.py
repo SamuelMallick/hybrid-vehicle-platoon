@@ -507,7 +507,7 @@ class TrackingEventBasedCoordinator(MldAgent):
                     self.agents[i].mpc.set_x_b2(self.state_guesses[i + 2])
 
                 temp_costs[i] = self.agents[i].mpc.eval_cost(x_guess, u_guess)
-                self.agents[i].get_control(x_l)
+                _, _ = self.agents[i].get_control(x_l)
                 new_cost = self.agents[i].get_predicted_cost()
                 if (temp_costs[i] - new_cost > best_cost_dec) and (
                     temp_costs[i] - new_cost > threshold
@@ -596,9 +596,9 @@ class TrackingEventBasedCoordinator(MldAgent):
                     np.vstack([self.control_guesses[i][:, [0]] for i in range(self.n)]),
                     np.vstack([self.gear_guesses[i][:, [0]] for i in range(self.n)]),
                 )
-            )
+            ), {}
         else:
-            return np.vstack([self.control_guesses[i][:, [0]] for i in range(self.n)])
+            return np.vstack([self.control_guesses[i][:, [0]] for i in range(self.n)]), {}
 
     def on_timestep_end(self, env: Env, episode: int, timestep: int) -> None:
         leader_x = self.leader_x[:, timestep : timestep + self.N + 1]

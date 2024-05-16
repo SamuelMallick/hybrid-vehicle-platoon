@@ -352,7 +352,7 @@ class TrackingSequentialMldCoordinator(MldAgent):
                     x_pred_behind[0, -2] + self.ts * x_pred_behind[1, -1]
                 )
                 self.agents[self.leader_index].mpc.set_x_back(x_pred_behind)
-        u[self.leader_index] = self.agents[self.leader_index].get_control(
+        u[self.leader_index], _ = self.agents[self.leader_index].get_control(
             x_l[self.leader_index]
         )
 
@@ -368,7 +368,7 @@ class TrackingSequentialMldCoordinator(MldAgent):
             x_pred_behind = self.agents[i + 1].get_predicted_state(shifted=False)
             self.agents[i].mpc.set_x_back(x_pred_behind)
 
-            u[i] = self.agents[i].get_control(x_l[i])
+            u[i], _ = self.agents[i].get_control(x_l[i])
 
         # vehicles behind leader
         for i in range(self.leader_index + 1, self.n):
@@ -383,7 +383,7 @@ class TrackingSequentialMldCoordinator(MldAgent):
                     )
                     self.agents[i].mpc.set_x_back(x_pred_behind)
 
-            u[i] = self.agents[i].get_control(x_l[i])
+            u[i], _ = self.agents[i].get_control(x_l[i])
 
         if u[0].shape[0] > self.nu_l:  # includes gear choices
             # stack the continuous control at the front and the discrete at the back
@@ -392,9 +392,9 @@ class TrackingSequentialMldCoordinator(MldAgent):
                     np.vstack([u[i][: self.nu_l, :] for i in range(self.n)]),
                     np.vstack([u[i][self.nu_l :, :] for i in range(self.n)]),
                 )
-            )
+            ), {}
         else:
-            return np.vstack(u)
+            return np.vstack(u), {}
 
     # here we set the leader cost because it is independent of other vehicles' states
     def on_timestep_end(self, env: Env, episode: int, timestep: int) -> None:

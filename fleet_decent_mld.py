@@ -313,7 +313,7 @@ class TrackingDecentMldCoordinator(MldAgent):
 
     def get_control(self, state: np.ndarray):
         x_l = np.split(state, self.n, axis=0)
-        u = [self.agents[i].get_control(x_l[i]) for i in range(self.n)]
+        u = [(self.agents[i].get_control(x_l[i]))[0] for i in range(self.n)]
         if u[0].shape[0] > self.nu_l:  # includes gear choices
             # stack the continuous conttrol at the front and the discrete at the back
             return np.vstack(
@@ -321,10 +321,9 @@ class TrackingDecentMldCoordinator(MldAgent):
                     np.vstack([u[i][: self.nu_l, :] for i in range(self.n)]),
                     np.vstack([u[i][self.nu_l :, :] for i in range(self.n)]),
                 )
-            )
+            ), {}
         else:
-            return np.vstack(u)
-
+            return np.vstack(u), {}
     # current state of car to be tracked is observed and propogated forward
     # to be the prediction
     def on_timestep_end(self, env: PlatoonEnv, episode: int, timestep: int) -> None:

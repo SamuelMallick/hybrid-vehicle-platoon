@@ -408,7 +408,7 @@ class ADMMCoordinator(MldAgent):
                 xl = state[
                     self.nx_l * i : self.nx_l * (i + 1), :
                 ]  # pull out local part of state
-                u[i] = self.agents[i].get_control(xl)
+                u[i], _ = self.agents[i].get_control(xl)
                 if DEBUG_PLOT:
                     admm_dict["u"][i].append(self.agents[i].mpc.u.X)
                     admm_dict["x"][i].append(self.agents[i].mpc.x.X)
@@ -561,9 +561,9 @@ class ADMMCoordinator(MldAgent):
                     np.vstack([u[i][: self.nu_l, :] for i in range(self.n)]),
                     np.vstack([u[i][self.nu_l :, :] for i in range(self.n)]),
                 )
-            )
+            ), {}
         else:
-            return np.vstack(u)
+            return np.vstack(u), {}
 
     # here we set the leader cost because it is independent of other vehicles' states
     def on_timestep_end(self, env: Env, episode: int, timestep: int) -> None:
