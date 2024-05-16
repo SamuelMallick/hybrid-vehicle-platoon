@@ -24,13 +24,14 @@ class Params:
 
 
 class Sim:
+    open_loop = False
     real_vehicle_as_reference = False
     vehicle_model_type: Literal["nonlinear", "pwa_friction", "pwa_gear"] = "pwa_friction"
     start_from_platoon: bool = False
     quadratic_cost: bool = True
-    n = 2
-    N = 3
-    ep_len = 100
+    n = 3
+    N = 10
+    ep_len = N if open_loop else 100
     spacing_policy = ConstantSpacingPolicy(50)
     leader_trajectory = ConstantVelocityLeaderTrajectory(
         p=3000, v=20, trajectory_len=ep_len + 50, ts=Params.ts

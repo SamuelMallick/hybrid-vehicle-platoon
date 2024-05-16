@@ -176,7 +176,7 @@ def simulate(
     # agent
     agent = TrackingCentralizedAgent(mpc, ep_len, N, leader_x)
 
-    agent.evaluate(env=env, episodes=1, seed=seed)
+    agent.evaluate(env=env, episodes=1, seed=seed, open_loop=sim.open_loop)
 
     if len(env.observations) > 0:
         X = env.observations[0].squeeze()
@@ -210,4 +210,4 @@ def simulate(
 
 
 if __name__ == "__main__":
-    simulate(Sim(), save=False, seed=1, leader_index=0)
+    simulate(Sim(), save=False, seed=0, leader_index=0)

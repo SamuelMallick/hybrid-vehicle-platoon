@@ -128,7 +128,7 @@ class MpcGear(MpcMld):
             # u_g = np.zeros((self.m, self.N))
             # gears = 6* np.ones((self.m, self.N))  # default set all gears
 
-        info["u"] = u_g
+        info["u"] = np.vstack((u_g, gears))
         self.gears_pred = gears
         return np.vstack((u_g[:, [0]], gears[:, [0]])), info
 
@@ -144,6 +144,7 @@ class MpcNonlinearGear(MpcGear):
         mpc_model = gp.Model("non_linear_gear_mpc")
         mpc_model.setParam("OutputFlag", 0)
         mpc_model.setParam("Heuristics", 0)
+        mpc_model.setParam("NonConvex", 2)
         if thread_limit is not None:
             mpc_model.params.threads = thread_limit
 

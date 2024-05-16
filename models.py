@@ -242,7 +242,7 @@ class Platoon:
         ):
             raise ValueError(f"Dimension error in x, u, or j.")
 
-        num_steps = 1  # number of sub-steps of nonlinear model within ts
+        num_steps = 10  # number of sub-steps of nonlinear model within ts
         DT = ts / num_steps
         for _ in range(num_steps):
             # split global vars into list of local
