@@ -7,122 +7,17 @@ from misc.common_controller_params import Sim_n_task_1, Sim_n_task_2
 
 thread_limit = 5
 seed_range = [i for i in range(10)]
-
-for N in range(2, 6):
-    for seed in seed_range:
-        sim = Sim_n_task_2(n=6, N=N, seed=seed)
-        try:
-            sim_cent(sim, save=True, plot=False, seed=seed, thread_limit=thread_limit)
-        except:
-            pass
-for N in range(2, 6):
-    for seed in seed_range:
-        sim = Sim_n_task_2(n=6, N=N, seed=seed)
-        try:
-            sim_seq(sim, save=True, plot=False, seed=seed, thread_limit=thread_limit)
-        except:
-            pass
-for N in range(2, 6):
-    for seed in seed_range:
-        sim = Sim_n_task_2(n=6, N=N, seed=seed)
-        try:
-            sim_decent(
-                sim,
-                save=True,
-                plot=False,
-                seed=seed,
-                thread_limit=thread_limit,
-                velocity_estimator='none',
-            )
-        except:
-            pass
-        try:
-            sim_decent(
-                sim,
-                save=True,
-                plot=False,
-                seed=seed,
-                thread_limit=thread_limit,
-                velocity_estimator='sat',
-            )
-        except:
-            pass
 for N in range(2, 6):
     for seed in seed_range:
         sim = Sim_n_task_2(n=6, N=N, seed=seed)
         try:
             sim_event(
                 sim,
-                event_iters=5,
+                event_iters=3,
                 save=True,
                 plot=False,
                 seed=seed,
                 thread_limit=thread_limit,
-            )
-        except:
-            pass
-        try:
-            sim_event(
-                sim,
-                event_iters=10,
-                save=True,
-                plot=False,
-                seed=seed,
-                thread_limit=thread_limit,
-            )
-        except:
-            pass
-for N in range(2, 6):
-    for seed in seed_range:
-        sim = Sim_n_task_2(n=6, N=N, seed=seed)
-        try:
-            sim_admm(
-                sim,
-                admm_iters=50,
-                save=True,
-                plot=False,
-                seed=seed,
-                thread_limit=thread_limit,
-            )
-        except:
-            pass
-for N in range(2, 6):
-    for seed in seed_range:
-        sim = Sim_n_task_2(n=6, N=N, seed=seed)
-        try:
-            sim_admm(
-                sim,
-                admm_iters=20,
-                save=True,
-                plot=False,
-                seed=seed,
-                thread_limit=thread_limit,
-            )
-        except:
-            pass
-
-seed_range = [i for i in range(1, 50)]
-for seed in seed_range:
-    for n in range(2, 9):
-        if task_1:
-            sim = Sim_n_task_1(n)
-        else:
-            sim = Sim_n_task_2(n, seed=seed)
-        try:
-            sim_event(
-                sim, 10, save=True, plot=False, seed=seed, thread_limit=thread_limit
-            )
-        except:
-            pass
-        try:
-            sim_admm(
-                sim, 50, save=True, plot=False, seed=seed, thread_limit=thread_limit
-            )
-        except:
-            pass
-        try:
-            sim_admm(
-                sim, 5, save=True, plot=False, seed=seed, thread_limit=thread_limit
             )
         except:
             pass

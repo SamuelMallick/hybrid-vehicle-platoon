@@ -26,18 +26,18 @@ class Params:
 class Sim:
     open_loop = False
     real_vehicle_as_reference = False
-    vehicle_model_type: Literal["nonlinear", "pwa_friction", "pwa_gear"] = "pwa_friction"
+    vehicle_model_type: Literal["nonlinear", "pwa_friction", "pwa_gear"] = "pwa_gear"
     start_from_platoon: bool = False
     quadratic_cost: bool = True
     n = 3
-    N = 10
-    ep_len = N if open_loop else 100
+    N = 6
+    ep_len = N if open_loop else 150
     spacing_policy = ConstantSpacingPolicy(50)
     leader_trajectory = ConstantVelocityLeaderTrajectory(
         p=3000, v=20, trajectory_len=ep_len + 50, ts=Params.ts
     )
     masses = None
-    id = f"default_n_{n}_N_{N}_disc_steps_1"
+    id = f"default_n_{n}_N_{N}"
 
 
 class Sim_n_task_1(Sim):
