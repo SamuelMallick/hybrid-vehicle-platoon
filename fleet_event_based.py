@@ -10,7 +10,7 @@ from mpcrl.wrappers.envs import MonitorEpisodes
 from scipy.linalg import block_diag
 
 from env import PlatoonEnv
-from misc.common_controller_params import Params, Sim
+from misc.common_controller_params import Params, Sim, Sim_n_task_2
 from misc.spacing_policy import ConstantSpacingPolicy, SpacingPolicy
 from models import Platoon, Vehicle
 from mpcs.mpc_gear import MpcGear, MpcNonlinearGear
@@ -337,7 +337,7 @@ class LocalMpc(MpcMldCentDecup):
             pass
         self.u.ub = float("inf")
         self.u.lb = -float("inf")
-        return super().solve_mpc(state)
+        return super().solve_mpc(state, raises=False)
 
 
 class LocalMpcGear(LocalMpc, MpcMldCentDecup, MpcGear):
@@ -465,6 +465,7 @@ class TrackingEventBasedCoordinator(MldAgent):
             print(f"iter {iter + 1}")
             best_cost_dec = -float("inf")
             best_idx = -1  # gets set to an agent index if there is a cost improvement
+            feasible_sol_flag = False
             for i in range(self.n):
                 # get local initial condition and local initial guesses
                 if i == 0:
@@ -509,12 +510,18 @@ class TrackingEventBasedCoordinator(MldAgent):
                 temp_costs[i] = self.agents[i].mpc.eval_cost(x_guess, u_guess)
                 _, _ = self.agents[i].get_control(x_l)
                 new_cost = self.agents[i].get_predicted_cost()
+
+                if new_cost < float('inf'):
+                    feasible_sol_flag = True
+
                 if (temp_costs[i] - new_cost > best_cost_dec) and (
                     temp_costs[i] - new_cost > threshold
                 ):
                     best_cost_dec = temp_costs[i] - new_cost
                     best_idx = i
 
+            if not feasible_sol_flag:
+                raise RuntimeWarning('No feasible solution found for any event based agent.')
             # get solve times and node count
             self.temp_solve_time += max(
                 [self.agents[i].run_time for i in range(self.n)]
@@ -560,35 +567,6 @@ class TrackingEventBasedCoordinator(MldAgent):
 
             else:  # don't repeat the repetitions if no-one improved cost
                 break
-
-        # debugging
-        if DEBUG:
-            cost_inc = 0
-            for i in range(self.n):
-                local_x = self.state_guesses[i]
-                local_u = self.control_guesses[i]
-                for k in range(self.N):
-                    if i == 0:
-                        front = self.agents[0].mpc.leader_x.X
-                        sep_temp = np.zeros((2, 1))
-                    else:
-                        front = self.state_guesses[i - 1]
-                        raise NotImplementedError()
-                        sep_temp = 0
-                    cost_inc += (
-                        local_x[:, k] - front[:, k] - sep_temp.T
-                    ) @ self.Q_x @ (
-                        local_x[:, [k]] - front[:, [k]] - sep_temp
-                    ) + local_u[
-                        :, k
-                    ] @ self.Q_u @ local_u[
-                        :, [k]
-                    ]
-                cost_inc += (
-                    (local_x[:, self.N] - front[:, self.N] - sep_temp.T)
-                    @ self.Q_x
-                    @ (local_x[:, [self.N]] - front[:, [self.N]] - sep_temp)
-                )
 
         if self.discrete_gears:
             return np.vstack(
@@ -788,4 +766,4 @@ def simulate(
 
 
 if __name__ == "__main__":
-    simulate(Sim(), event_iters=2, seed=1, leader_index=0)
+    simulate(Sim_n_task_2(n=10, N=2, seed = 2), plot=True, event_iters=3, seed=2, leader_index=0)

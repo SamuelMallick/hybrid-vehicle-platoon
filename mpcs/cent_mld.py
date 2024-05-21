@@ -126,7 +126,7 @@ class MpcMldCent(MpcMldCentDecup):
         # contral variation cost
         cost += sum(
             [
-                self.cost_func(u_l[i][:, k + 1] - u_l[i][:, k], self.Q_du)
+                self.cost_func(u_l[i][:, [k + 1]] - u_l[i][:, [k]], self.Q_du)
                 for i in range(self.n)
                 for k in range(self.N - 1)
             ]

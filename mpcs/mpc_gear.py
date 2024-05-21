@@ -131,7 +131,42 @@ class MpcGear(MpcMld):
         info["u"] = np.vstack((u_g, gears))
         self.gears_pred = gears
         return np.vstack((u_g[:, [0]], gears[:, [0]])), info
-
+    
+    def evaluate_cost(self, x0: np.ndarray, u: np.ndarray, j: np.ndarray | None = None):
+        """Evalaute cost of MPC problem for a given x0 and u traj"""
+        if u.shape != self.u.shape:
+            raise ValueError(f'Expected u shape {self.u.shape}. Got {u.shape}.')
+        if j is not None:
+            for k_1 in range(u.shape[1]):   # loop horizon
+                for k_2 in range(u.shape[0]):   # loop vehicles
+                    for k_3 in range(6):    # loop gears
+                        if j[k_2, k_1] == k_3 + 1:
+                            self.sigma[k_3, k_2, k_1].ub = 1
+                            self.sigma[k_3, k_2, k_1].lb = 1
+                        else:
+                            self.sigma[k_3, k_2, k_1].ub = 0
+                            self.sigma[k_3, k_2, k_1].lb = 0
+        
+        self.IC.RHS = x0
+        self.u_g.ub = u
+        self.u_g.lb = u
+        self.mpc_model.optimize()
+        if self.mpc_model.Status == 2:  # check for successful solve
+            cost = self.mpc_model.objVal
+        else:
+            cost = 'inf'
+        self.x.ub = float('inf')
+        self.x.lb = -float('inf')
+        self.u_g.ub = float('inf')
+        self.u_g.lb = -float('inf')
+        if j is not None:
+            for k_1 in range(u.shape[1]):   # loop horizon
+                for k_2 in range(u.shape[0]):   # loop vehicles
+                    for k_3 in range(6):    # loop gears
+                            self.sigma[k_3, k_2, k_1].ub = float('inf')
+                            self.sigma[k_3, k_2, k_1].lb = -float('inf')
+        return cost
+        
 
 class MpcNonlinearGear(MpcGear):
     """An MPC controller than uses a nonlinear vehicle model along with discrete gear inputs x^+ = f(x) + B(j,x)u."""
@@ -205,3 +240,5 @@ class MpcNonlinearGear(MpcGear):
         self.n = n
         self.m = n * nu_l
         self.N = N
+
+    
