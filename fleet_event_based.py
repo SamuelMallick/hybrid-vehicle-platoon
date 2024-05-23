@@ -678,6 +678,7 @@ def simulate(
                 spacing_policy=spacing_policy,
                 start_from_platoon=sim.start_from_platoon,
                 leader_index=leader_index,
+                ep_len=sim.ep_len
             ),
             max_episode_steps=ep_len,
         )
@@ -766,4 +767,4 @@ def simulate(
 
 
 if __name__ == "__main__":
-    simulate(Sim_n_task_2(n=10, N=2, seed = 2), plot=True, event_iters=3, seed=2, leader_index=0)
+    simulate(Sim(), plot=True, event_iters=4, seed=0, leader_index=0)

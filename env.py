@@ -28,8 +28,8 @@ class PlatoonEnv(gym.Env[npt.NDArray[np.floating], npt.NDArray[np.floating]]):
         self,
         n: int,
         platoon: Platoon,
+        ep_len: int,
         leader_index: int = 0,
-        ep_len: int = 100,
         ts: float = 1,
         leader_trajectory: LeaderTrajectory = ConstantVelocityLeaderTrajectory(
             p=3000, v=20, trajectory_len=150, ts=1
