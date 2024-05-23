@@ -305,14 +305,14 @@ class LocalMpc(MpcMldCentDecup):
             self.x_b2[:, [k]].lb = x_b2[:, [k]]
             self.x_b2[:, [k]].ub = x_b2[:, [k]]
 
-    def eval_cost(self, x: np.ndarray, u: np.ndarray):
+    def eval_cost(self, x: np.ndarray, u: np.ndarray, discrete_gears: bool = False):
         # set the bounds of the vars in the model to fix the vals
         for k in range(
             self.N
         ):  # we dont constain the N+1th state, as it is defined by shifted control
             self.x[:, [k]].ub = x[:, [k]]
             self.x[:, [k]].lb = x[:, [k]]
-        if u.shape[0] > self.n * self.nu_l:  # discrete gears included
+        if discrete_gears:
             self.u_g.ub = u
             self.u_g.lb = u
         else:
@@ -326,7 +326,7 @@ class LocalMpc(MpcMldCentDecup):
             cost = float("inf")  # infinite cost if infeasible
         return cost
 
-    def solve_mpc(self, state):
+    def solve_mpc(self, state, raises: bool = False):
         # the solve method is overridden so that the bounds on the vars are set back to normal before solving.
         self.x.ub = float("inf")
         self.x.lb = -float("inf")
@@ -337,7 +337,7 @@ class LocalMpc(MpcMldCentDecup):
             pass
         self.u.ub = float("inf")
         self.u.lb = -float("inf")
-        return super().solve_mpc(state, raises=False)
+        return super().solve_mpc(state, raises=raises)
 
 
 class LocalMpcGear(LocalMpc, MpcMldCentDecup, MpcGear):
@@ -507,7 +507,7 @@ class TrackingEventBasedCoordinator(MldAgent):
                 if i < self.n - 2:
                     self.agents[i].mpc.set_x_b2(self.state_guesses[i + 2])
 
-                temp_costs[i] = self.agents[i].mpc.eval_cost(x_guess, u_guess)
+                temp_costs[i] = self.agents[i].mpc.eval_cost(x_guess, u_guess, discrete_gears = self.discrete_gears)
                 _, _ = self.agents[i].get_control(x_l)
                 new_cost = self.agents[i].get_predicted_cost()
 

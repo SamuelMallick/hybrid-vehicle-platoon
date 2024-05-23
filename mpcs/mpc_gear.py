@@ -113,9 +113,9 @@ class MpcGear(MpcMld):
         self.sigma = sigma
         self.b = b
 
-    def solve_mpc(self, state):
+    def solve_mpc(self, state, raises: bool = True):
         """Solve mpc for gear and throttle."""
-        u_0, info = super().solve_mpc(state)
+        u_0, info = super().solve_mpc(state, raises=raises)
         if self.mpc_model.Status == 2:  # check for successful solve
             u_g = self.u_g.X
             sig = self.sigma.X
@@ -124,9 +124,11 @@ class MpcGear(MpcMld):
                 for k in range(self.N):
                     gears[i, k] = sig[:, i, k].argmax() + 1
         else:
-            raise RuntimeWarning(f"gear mpc for state {state} is infeasible.")
-            # u_g = np.zeros((self.m, self.N))
-            # gears = 6* np.ones((self.m, self.N))  # default set all gears
+            if raises:
+                raise RuntimeWarning(f"gear mpc for state {state} is infeasible.")
+            else:
+                u_g = np.zeros((self.m, self.N))
+                gears = 6* np.ones((self.m, self.N))  # default set all gears
 
         info["u"] = np.vstack((u_g, gears))
         self.gears_pred = gears
