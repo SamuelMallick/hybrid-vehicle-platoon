@@ -9,7 +9,7 @@ from gymnasium.wrappers import TimeLimit
 from mpcrl.wrappers.envs import MonitorEpisodes
 
 from env import PlatoonEnv
-from misc.common_controller_params import Params, Sim
+from misc.common_controller_params import Params, Sim, Sim_n_task_2
 from misc.spacing_policy import ConstantSpacingPolicy, SpacingPolicy
 from models import Platoon, Vehicle
 from mpcs.mpc_gear import MpcGear, MpcNonlinearGear
@@ -352,7 +352,7 @@ class TrackingSequentialMldCoordinator(MldAgent):
                     x_pred_behind[0, -2] + self.ts * x_pred_behind[1, -1]
                 )
                 self.agents[self.leader_index].mpc.set_x_back(x_pred_behind)
-        u[self.leader_index], _ = self.agents[self.leader_index].get_control(
+        u[self.leader_index], info = self.agents[self.leader_index].get_control(
             x_l[self.leader_index]
         )
 
@@ -368,7 +368,7 @@ class TrackingSequentialMldCoordinator(MldAgent):
             x_pred_behind = self.agents[i + 1].get_predicted_state(shifted=False)
             self.agents[i].mpc.set_x_back(x_pred_behind)
 
-            u[i], _ = self.agents[i].get_control(x_l[i])
+            u[i], info = self.agents[i].get_control(x_l[i])
 
         # vehicles behind leader
         for i in range(self.leader_index + 1, self.n):
@@ -545,4 +545,4 @@ def simulate(
 
 
 if __name__ == "__main__":
-    simulate(Sim(), save=False, seed=1, leader_index=0)
+    simulate(Sim_n_task_2(n = 4, N = 5, seed = 0), save=False, seed=0, leader_index=3)
