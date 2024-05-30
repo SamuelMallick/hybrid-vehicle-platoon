@@ -39,6 +39,7 @@ class PlatoonEnv(gym.Env[npt.NDArray[np.floating], npt.NDArray[np.floating]]):
         start_from_platoon: bool = False,
         quadratic_cost: bool = True,
         real_vehicle_as_reference: bool = False,
+        penalize_fuel: bool = False,
     ) -> None:
         super().__init__()
 

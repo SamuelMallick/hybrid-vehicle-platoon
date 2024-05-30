@@ -26,11 +26,11 @@ class Params:
 class Sim:
     open_loop = False
     real_vehicle_as_reference = False
-    vehicle_model_type: Literal["nonlinear", "pwa_friction", "pwa_gear"] = "pwa_gear"
+    vehicle_model_type: Literal["nonlinear", "pwa_friction", "pwa_gear"] = "pwa_gear"   # MLD form (model II) is pwa_friction
     start_from_platoon: bool = False
     quadratic_cost: bool = True
-    n = 3
-    N = 6
+    n = 1
+    N = 3
     ep_len = N if open_loop else 150
     spacing_policy = ConstantSpacingPolicy(50)
     leader_trajectory = ConstantVelocityLeaderTrajectory(
