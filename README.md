@@ -24,7 +24,7 @@ If you find the paper or this repository helpful in your publications, please co
 
 ## Installation
 
-The code was created with `Python 3.9`. To access it, clone the repository
+The code was created with `Python 3.11`. To access it, clone the repository
 
 ```bash
 git clone https://github.com/SamuelMallick/hybrid-vehicle-platoon
@@ -41,12 +41,14 @@ pip install -r requirements.txt
 
 The repository code is structured in the following way
 
-- **`ACC_env.py`** contains the environment for simulating the platoon. This updates the state of the platoon according to the nonlinear hybrid model, and generates the cost penalties for given states.
-- **`ACC_model.py`** contains all functions and data structures related to the modelling of the vehicles.
-- **`bash_scripts`** contains contains bash scripts for automated running of tests.
+- **`env.py`** contains the environment for simulating the platoon. This updates the state of the platoon according to the nonlinear hybrid model, and generates the cost penalties for given states.
+- **`model.py`** contains all functions and data structures related to the modeling of the vehicles.
 - **`data`** contains '.pkl' files for data used in A Comparison Benchmark for Distributed Hybrid MPC Control Methods: Distributed Vehicle Platooning.
 - **`results_analysis`** contains scripts for generating the images and tables used in A Comparison Benchmark for Distributed Hybrid MPC Control Methods: Distributed Vehicle Platooning.
 - **`fleet_{cent_mld, decent_mld, seq_mld, event_based, naive_admm}.py`** launch simulations for the five controllers used in A Comparison Benchmark for Distributed Hybrid MPC Control Methods: Distributed Vehicle Platooning.
+- **`utils`** contains auxillary scripts used in the project.
+- **`mpcs`** contians base MPC classes upon which the five controllers are built.
+- **`misc`** contains classes used in simulations to generate reference trajectories, spacing policies, and specify simulation details.
 
 ```
 
