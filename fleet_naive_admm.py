@@ -15,7 +15,7 @@ from misc.common_controller_params import Params, Sim
 from misc.spacing_policy import ConstantSpacingPolicy, SpacingPolicy
 from models import Platoon, Vehicle
 from mpcs.mpc_gear import MpcGear, MpcNonlinearGear
-from plot_fleet import plot_fleet
+from utils.plot_fleet import plot_fleet
 
 np.random.seed(2)
 
