@@ -1,10 +1,8 @@
 import pickle
+import statistics
 
-from matplotlib import ticker
 import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
-import statistics
 from matplotlib.gridspec import GridSpec
 
 plt.rc("text", usetex=True)
@@ -27,7 +25,7 @@ types = [
     # "event_1",
     "event_5",
     "event_10",
-    #"admm_5",
+    # "admm_5",
     "admm_20",
     "admm_50",
 ]
@@ -91,7 +89,11 @@ for type_indx, type in enumerate(types):
                 if not multi_lead:
                     if N == 6 and type == "decent_vest_none":
                         type = "decent_vest_False"
-                    file_name = f"data/{type}_task_2_n_{n}_N_{N}_q_0.2_seed_{seed}.pkl" if q_du_pen != 0 else f"data/{type}_task_2_n_{n}_N_{N}_seed_{seed}.pkl"
+                    file_name = (
+                        f"data/{type}_task_2_n_{n}_N_{N}_q_0.2_seed_{seed}.pkl"
+                        if q_du_pen != 0
+                        else f"data/{type}_task_2_n_{n}_N_{N}_seed_{seed}.pkl"
+                    )
                 else:
                     file_name = f"data/multi_leader/{type}_task_2_n_{n}_N_{N}_lead_{lead}_seed_{seed}.pkl"
                 try:
@@ -115,79 +117,176 @@ for type_indx, type in enumerate(types):
                     )
                     time[type_indx][n_indx] += list(solve_times.squeeze())
                     nodes[type_indx][n_indx] += list(node_counts.squeeze())
-                    v = (sum(violations) / 100)
+                    v = sum(violations) / 100
                     if v != 0:
                         pass
                     viols[type_indx][n_indx][seed_indx] += v
                 except:
                     print(f"no seed {seed}")
-        pass
 
 
 # plotting params for all figs
 lw = 1.5  # line width
 ms = 5  # marker size
-mf = ["-o"]*num_decent_vars + ["-x"]*num_seq_vars + [":v"]*num_event_vars + ["--s"]*num_admm_vars    # marker format
+mf = (
+    ["-o"] * num_decent_vars
+    + ["-x"] * num_seq_vars
+    + [":v"] * num_event_vars
+    + ["--s"] * num_admm_vars
+)  # marker format
 
 # tracking cost as percentrage performance drop from centralized
 perf_drop_abs = [None] * (len(types) - 1)
 perf_drop_rel = [None] * (len(types) - 1)
 for i in range(1, len(types)):
-    perf_drop_rel[i-1] = [
+    perf_drop_rel[i - 1] = [
         [
-            100 * (track_costs[i][j][k][0] - track_costs[0][j][k][0]) / track_costs[0][j][k][0]
+            100
+            * (track_costs[i][j][k][0] - track_costs[0][j][k][0])
+            / track_costs[0][j][k][0]
             for k in range(len(seeds))
         ]
         for j in range(len(n_sw))
     ]
-    perf_drop_abs[i-1] = [
-        [
-            (track_costs[i][j][k][0] - track_costs[0][j][k][0])
-            for k in range(len(seeds))
-        ]
+    perf_drop_abs[i - 1] = [
+        [(track_costs[i][j][k][0] - track_costs[0][j][k][0]) for k in range(len(seeds))]
         for j in range(len(n_sw))
     ]
 
 # get rid of the dimension
-viols = [[[x[0] for x in viols[i][j]] for j in range(len(n_sw))] for i in range(len(types))]
-track_costs = [[[x[0] for x in track_costs[i][j]] for j in range(len(n_sw))] for i in range(len(track_costs))]
+viols = [
+    [[x[0] for x in viols[i][j]] for j in range(len(n_sw))] for i in range(len(types))
+]
+track_costs = [
+    [[x[0] for x in track_costs[i][j]] for j in range(len(n_sw))]
+    for i in range(len(track_costs))
+]
 
 if stand_error:
-    perf_drop_rel_sd = [[np.std(perf_drop_rel[i][j])/np.sqrt(len(perf_drop_rel[i][j])) for j in range(len(n_sw))] for i in range(len(perf_drop_rel))]
-    perf_drop_abs_sd = [[np.std(perf_drop_abs[i][j])/np.sqrt(len(perf_drop_abs[i][j])) for j in range(len(n_sw))] for i in range(len(perf_drop_abs))]
+    perf_drop_rel_sd = [
+        [
+            np.std(perf_drop_rel[i][j]) / np.sqrt(len(perf_drop_rel[i][j]))
+            for j in range(len(n_sw))
+        ]
+        for i in range(len(perf_drop_rel))
+    ]
+    perf_drop_abs_sd = [
+        [
+            np.std(perf_drop_abs[i][j]) / np.sqrt(len(perf_drop_abs[i][j]))
+            for j in range(len(n_sw))
+        ]
+        for i in range(len(perf_drop_abs))
+    ]
 
-    viols_sd = [[np.std(viols[i][j])/np.sqrt(len(viols[i][j])) for j in range(len(n_sw))] for i in range(1, len(viols))]
+    viols_sd = [
+        [np.std(viols[i][j]) / np.sqrt(len(viols[i][j])) for j in range(len(n_sw))]
+        for i in range(1, len(viols))
+    ]
 
-    track_cost_sd = [[np.std(track_costs[i][j])/np.sqrt(len(track_costs[i][j])) for j in range(len(n_sw))] for i in range(1, len(track_costs))]
+    track_cost_sd = [
+        [
+            np.std(track_costs[i][j]) / np.sqrt(len(track_costs[i][j]))
+            for j in range(len(n_sw))
+        ]
+        for i in range(1, len(track_costs))
+    ]
 else:
-    perf_drop_rel_sd = [[np.std(perf_drop_rel[i][j]) for j in range(len(n_sw))] for i in range(len(perf_drop_rel))]
-    perf_drop_abs_sd = [[np.std(perf_drop_abs[i][j]) for j in range(len(n_sw))] for i in range(len(perf_drop_abs))]
+    perf_drop_rel_sd = [
+        [np.std(perf_drop_rel[i][j]) for j in range(len(n_sw))]
+        for i in range(len(perf_drop_rel))
+    ]
+    perf_drop_abs_sd = [
+        [np.std(perf_drop_abs[i][j]) for j in range(len(n_sw))]
+        for i in range(len(perf_drop_abs))
+    ]
 
-    viols_sd = [[np.std(viols[i][j]) for j in range(len(n_sw))] for i in range(1, len(viols))]
+    viols_sd = [
+        [np.std(viols[i][j]) for j in range(len(n_sw))] for i in range(1, len(viols))
+    ]
 
-    track_cost_sd = [[np.std(track_costs[i][j]) for j in range(len(n_sw))] for i in range(1, len(track_costs))]
+    track_cost_sd = [
+        [np.std(track_costs[i][j]) for j in range(len(n_sw))]
+        for i in range(1, len(track_costs))
+    ]
 if harmonic_mean:
     # add negative values so that harmonic mean has only positives. Then subtract the min from the mean
-    min_rel = min(min(min([[min(perf_drop_rel[i][j]) for j in range(len(n_sw))] for i in range(1, len(perf_drop_rel))])), 0)
-    min_abs = min(min(min([[min(perf_drop_abs[i][j]) for j in range(len(n_sw))] for i in range(1, len(perf_drop_abs))])), 0)
-    perf_drop_rel_mean = [[statistics.harmonic_mean([item - min_rel for item in perf_drop_rel[i][j]]) for j in range(len(n_sw))] for i in range(len(perf_drop_rel))]
-    perf_drop_abs_mean = [[statistics.harmonic_mean([item - min_abs for item in perf_drop_abs[i][j]]) for j in range(len(n_sw))] for i in range(len(perf_drop_abs))]
-    
-    perf_drop_rel_mean = [[item - min_rel for item in perf_drop_rel_mean[i]] for i in range(len(perf_drop_rel_mean))]
-    perf_drop_abs_mean = [[item - min_rel for item in perf_drop_abs_mean[i]] for i in range(len(perf_drop_abs_mean))]
+    min_rel = min(
+        min(
+            min(
+                [
+                    [min(perf_drop_rel[i][j]) for j in range(len(n_sw))]
+                    for i in range(1, len(perf_drop_rel))
+                ]
+            )
+        ),
+        0,
+    )
+    min_abs = min(
+        min(
+            min(
+                [
+                    [min(perf_drop_abs[i][j]) for j in range(len(n_sw))]
+                    for i in range(1, len(perf_drop_abs))
+                ]
+            )
+        ),
+        0,
+    )
+    perf_drop_rel_mean = [
+        [
+            statistics.harmonic_mean([item - min_rel for item in perf_drop_rel[i][j]])
+            for j in range(len(n_sw))
+        ]
+        for i in range(len(perf_drop_rel))
+    ]
+    perf_drop_abs_mean = [
+        [
+            statistics.harmonic_mean([item - min_abs for item in perf_drop_abs[i][j]])
+            for j in range(len(n_sw))
+        ]
+        for i in range(len(perf_drop_abs))
+    ]
 
-    time_mean = [[statistics.harmonic_mean(time[i][j]) for j in range(len(n_sw))] for i in range(1, len(time))]
+    perf_drop_rel_mean = [
+        [item - min_rel for item in perf_drop_rel_mean[i]]
+        for i in range(len(perf_drop_rel_mean))
+    ]
+    perf_drop_abs_mean = [
+        [item - min_rel for item in perf_drop_abs_mean[i]]
+        for i in range(len(perf_drop_abs_mean))
+    ]
 
-    viols_mean = [[statistics.harmonic_mean(viols[i][j]) for j in range(len(n_sw))] for i in range(1, len(viols))]
+    time_mean = [
+        [statistics.harmonic_mean(time[i][j]) for j in range(len(n_sw))]
+        for i in range(1, len(time))
+    ]
+
+    viols_mean = [
+        [statistics.harmonic_mean(viols[i][j]) for j in range(len(n_sw))]
+        for i in range(1, len(viols))
+    ]
 else:
-    perf_drop_rel_mean = [[np.mean(perf_drop_rel[i][j]) for j in range(len(n_sw))] for i in range(len(perf_drop_rel))]
-    perf_drop_abs_mean = [[np.mean(perf_drop_abs[i][j]) for j in range(len(n_sw))] for i in range(len(perf_drop_abs))]
+    perf_drop_rel_mean = [
+        [np.mean(perf_drop_rel[i][j]) for j in range(len(n_sw))]
+        for i in range(len(perf_drop_rel))
+    ]
+    perf_drop_abs_mean = [
+        [np.mean(perf_drop_abs[i][j]) for j in range(len(n_sw))]
+        for i in range(len(perf_drop_abs))
+    ]
 
-    time_mean = [[np.mean(time[i][j]) for j in range(len(n_sw))] for i in range(1, len(time))]
+    time_mean = [
+        [np.mean(time[i][j]) for j in range(len(n_sw))] for i in range(1, len(time))
+    ]
 
-    viols_mean = [[np.mean(viols[i][j]) for j in range(len(n_sw))] for i in range(1, len(viols))]
+    viols_mean = [
+        [np.mean(viols[i][j]) for j in range(len(n_sw))] for i in range(1, len(viols))
+    ]
 
-    track_cost_mean = [[np.mean(track_costs[i][j]) for j in range(len(n_sw))] for i in range(1, len(track_costs))]
+    track_cost_mean = [
+        [np.mean(track_costs[i][j]) for j in range(len(n_sw))]
+        for i in range(1, len(track_costs))
+    ]
 
 time_max = [[max(time[i][j]) for j in range(len(n_sw))] for i in range(1, len(time))]
 time_min = [[min(time[i][j]) for j in range(len(n_sw))] for i in range(1, len(time))]
@@ -201,9 +300,14 @@ for i, leg_ in enumerate(leg):
 axs[0].set_axis_off()
 axs[0].legend(leg, ncol=2, loc="center")
 axs[1].set_yscale("log")
-for i in range(len(types)-1):
+for i in range(len(types) - 1):
     axs[1].plot(n_sw, track_cost_mean[i], mf[i])
-    axs[1].fill_between(n_sw, [track_cost_mean[i][j] - track_cost_sd[i][j] for j in range(len(n_sw))], [track_cost_mean[i][j] + track_cost_sd[i][j] for j in range(len(n_sw))], alpha=0.2)
+    axs[1].fill_between(
+        n_sw,
+        [track_cost_mean[i][j] - track_cost_sd[i][j] for j in range(len(n_sw))],
+        [track_cost_mean[i][j] + track_cost_sd[i][j] for j in range(len(n_sw))],
+        alpha=0.2,
+    )
 axs[1].set_xlabel(r"$n$")
 axs[1].set_ylabel(r"$\%J$")
 
@@ -214,25 +318,40 @@ for i, leg_ in enumerate(leg):
 axs[0].set_axis_off()
 axs[0].legend(leg, ncol=2, loc="center")
 # axs[1].set_yscale("log")
-for i in range(len(types)-1):
+for i in range(len(types) - 1):
     axs[1].plot(n_sw, track_cost_mean[i], mf[i])
-    axs[1].fill_between(n_sw, [track_cost_mean[i][j] - track_cost_sd[i][j] for j in range(len(n_sw))], [track_cost_mean[i][j] + track_cost_sd[i][j] for j in range(len(n_sw))], alpha=0.2)
+    axs[1].fill_between(
+        n_sw,
+        [track_cost_mean[i][j] - track_cost_sd[i][j] for j in range(len(n_sw))],
+        [track_cost_mean[i][j] + track_cost_sd[i][j] for j in range(len(n_sw))],
+        alpha=0.2,
+    )
 axs[1].set_ylabel(r"$\Delta J$")
 axs[2].set_yscale("log")
-for i in range(len(types)-1):
+for i in range(len(types) - 1):
     axs[2].plot(n_sw, time_mean[i], mf[i])
-    axs[2].fill_between(n_sw, [time_min[i][j] for j in range(len(n_sw))], [time_max[i][j] for j in range(len(n_sw))], alpha=0.2)
+    axs[2].fill_between(
+        n_sw,
+        [time_min[i][j] for j in range(len(n_sw))],
+        [time_max[i][j] for j in range(len(n_sw))],
+        alpha=0.2,
+    )
 axs[2].set_ylabel(r"$t$")
 
 axs[3].set_yscale("log")
-for i in range(len(types)-1):
+for i in range(len(types) - 1):
     axs[3].plot(n_sw, nodes_max[i], mf[i])
 axs[3].set_ylabel(r"$n_{no}$")
 
 # axs[4].set_yscale("log")
-for i in range(len(types)-1):
+for i in range(len(types) - 1):
     axs[4].plot(n_sw, viols_mean[i], mf[i])
-    axs[4].fill_between(n_sw, [viols_mean[i][j] - viols_sd[i][j] for j in range(len(n_sw))], [viols_mean[i][j] + viols_sd[i][j] for j in range(len(n_sw))], alpha=0.2)
+    axs[4].fill_between(
+        n_sw,
+        [viols_mean[i][j] - viols_sd[i][j] for j in range(len(n_sw))],
+        [viols_mean[i][j] + viols_sd[i][j] for j in range(len(n_sw))],
+        alpha=0.2,
+    )
 axs[4].set_xlabel(r"$n$")
 axs[4].set_ylabel(r"$n_{cv}$")
 
@@ -249,63 +368,243 @@ for i in range(1, 6):
 axs.append(fig.add_subplot(gs[0, 0]))
 
 # bounds on axes
-ub_perf = max([max([track_cost_mean[i][j] + track_cost_sd[i][j] for j in range(len(n_sw))]) for i in range(2, len(perf_drop_abs_mean))])
-lb_perf = min([min([track_cost_mean[i][j] - track_cost_sd[i][j] for j in range(len(n_sw))]) for i in range(len(perf_drop_abs_mean))])
-ub_time = max([max([time_max[i][j] for j in range(len(n_sw))]) for i in range(len(perf_drop_abs_mean))])
-lb_time = min([min([time_min[i][j] for j in range(len(n_sw))]) for i in range(len(perf_drop_abs_mean))])
-ub_node = max([max([nodes_max[i][j] for j in range(len(n_sw))]) for i in range(len(perf_drop_abs_mean))])
-lb_node = min([min([nodes_max[i][j] for j in range(len(n_sw))]) for i in range(len(perf_drop_abs_mean))])
+ub_perf = max(
+    [
+        max([track_cost_mean[i][j] + track_cost_sd[i][j] for j in range(len(n_sw))])
+        for i in range(2, len(perf_drop_abs_mean))
+    ]
+)
+lb_perf = min(
+    [
+        min([track_cost_mean[i][j] - track_cost_sd[i][j] for j in range(len(n_sw))])
+        for i in range(len(perf_drop_abs_mean))
+    ]
+)
+ub_time = max(
+    [
+        max([time_max[i][j] for j in range(len(n_sw))])
+        for i in range(len(perf_drop_abs_mean))
+    ]
+)
+lb_time = min(
+    [
+        min([time_min[i][j] for j in range(len(n_sw))])
+        for i in range(len(perf_drop_abs_mean))
+    ]
+)
+ub_node = max(
+    [
+        max([nodes_max[i][j] for j in range(len(n_sw))])
+        for i in range(len(perf_drop_abs_mean))
+    ]
+)
+lb_node = min(
+    [
+        min([nodes_max[i][j] for j in range(len(n_sw))])
+        for i in range(len(perf_drop_abs_mean))
+    ]
+)
 for i in range(1, 5):
     axs[i].set_ylim(lb_perf, ub_perf)
 for i in range(5, 9):
     axs[i].set_ylim(lb_time, ub_time)
-    axs[i].set_yscale('log')
+    axs[i].set_yscale("log")
     axs[i].set_yticks([0.01, 0.1, 1, 10, 100])
     # plt.gca().yaxis.set_major_locator(ticker.LogLocator(base=10.0, subs=[1.0]))
 for i in range(9, 11):
     axs[i].set_ylim(lb_node, ub_node)
-    axs[i].set_yscale('log')
+    axs[i].set_yscale("log")
 
 for i, leg_ in enumerate(leg):
     axs[0].plot(5, 5, mf[i], label=leg_, markerfacecolor="none")
 axs[0].set_axis_off()
 axs[0].legend(leg, ncol=2, loc="center")
 for i in range(num_decent_vars):
-    axs[1].plot(n_sw, track_cost_mean[i], mf[i], color=f"C{i}", linewidth=lw, markersize=ms, markerfacecolor="none")
-    axs[1].fill_between(n_sw, [track_cost_mean[i][j] - track_cost_sd[i][j] for j in range(len(n_sw))], [track_cost_mean[i][j] + track_cost_sd[i][j] for j in range(len(n_sw))], alpha=0.2, color=f"C{i}")
+    axs[1].plot(
+        n_sw,
+        track_cost_mean[i],
+        mf[i],
+        color=f"C{i}",
+        linewidth=lw,
+        markersize=ms,
+        markerfacecolor="none",
+    )
+    axs[1].fill_between(
+        n_sw,
+        [track_cost_mean[i][j] - track_cost_sd[i][j] for j in range(len(n_sw))],
+        [track_cost_mean[i][j] + track_cost_sd[i][j] for j in range(len(n_sw))],
+        alpha=0.2,
+        color=f"C{i}",
+    )
 
-    axs[5].plot(n_sw, time_mean[i], mf[i], color=f"C{i}", linewidth=lw, markersize=ms, markerfacecolor="none")
-    axs[5].fill_between(n_sw, [time_min[i][j] for j in range(len(n_sw))], [time_max[i][j] for j in range(len(n_sw))], alpha=0.2, color=f"C{i}")
+    axs[5].plot(
+        n_sw,
+        time_mean[i],
+        mf[i],
+        color=f"C{i}",
+        linewidth=lw,
+        markersize=ms,
+        markerfacecolor="none",
+    )
+    axs[5].fill_between(
+        n_sw,
+        [time_min[i][j] for j in range(len(n_sw))],
+        [time_max[i][j] for j in range(len(n_sw))],
+        alpha=0.2,
+        color=f"C{i}",
+    )
 
-for i in range(num_decent_vars, num_decent_vars+num_seq_vars):
-    axs[2].plot(n_sw, track_cost_mean[i], mf[i], color=f"C{i}", linewidth=lw, markersize=ms, markerfacecolor="none")
-    axs[2].fill_between(n_sw, [track_cost_mean[i][j] - track_cost_sd[i][j] for j in range(len(n_sw))], [track_cost_mean[i][j] + track_cost_sd[i][j] for j in range(len(n_sw))], alpha=0.2, color=f"C{i}")
+for i in range(num_decent_vars, num_decent_vars + num_seq_vars):
+    axs[2].plot(
+        n_sw,
+        track_cost_mean[i],
+        mf[i],
+        color=f"C{i}",
+        linewidth=lw,
+        markersize=ms,
+        markerfacecolor="none",
+    )
+    axs[2].fill_between(
+        n_sw,
+        [track_cost_mean[i][j] - track_cost_sd[i][j] for j in range(len(n_sw))],
+        [track_cost_mean[i][j] + track_cost_sd[i][j] for j in range(len(n_sw))],
+        alpha=0.2,
+        color=f"C{i}",
+    )
 
-    axs[6].plot(n_sw, time_mean[i], mf[i], color=f"C{i}", linewidth=lw, markersize=ms, markerfacecolor="none")
-    axs[6].fill_between(n_sw, [time_min[i][j] for j in range(len(n_sw))], [time_max[i][j] for j in range(len(n_sw))], alpha=0.2, color=f"C{i}")
+    axs[6].plot(
+        n_sw,
+        time_mean[i],
+        mf[i],
+        color=f"C{i}",
+        linewidth=lw,
+        markersize=ms,
+        markerfacecolor="none",
+    )
+    axs[6].fill_between(
+        n_sw,
+        [time_min[i][j] for j in range(len(n_sw))],
+        [time_max[i][j] for j in range(len(n_sw))],
+        alpha=0.2,
+        color=f"C{i}",
+    )
 
-for i in range(num_decent_vars+num_seq_vars, num_decent_vars+num_seq_vars+num_event_vars):
-    axs[3].plot(n_sw, track_cost_mean[i], mf[i], color=f"C{i}", linewidth=lw, markersize=ms, markerfacecolor="none")
-    axs[3].fill_between(n_sw, [track_cost_mean[i][j] - track_cost_sd[i][j] for j in range(len(n_sw))], [track_cost_mean[i][j] + track_cost_sd[i][j] for j in range(len(n_sw))], alpha=0.2, color=f"C{i}")
+for i in range(
+    num_decent_vars + num_seq_vars, num_decent_vars + num_seq_vars + num_event_vars
+):
+    axs[3].plot(
+        n_sw,
+        track_cost_mean[i],
+        mf[i],
+        color=f"C{i}",
+        linewidth=lw,
+        markersize=ms,
+        markerfacecolor="none",
+    )
+    axs[3].fill_between(
+        n_sw,
+        [track_cost_mean[i][j] - track_cost_sd[i][j] for j in range(len(n_sw))],
+        [track_cost_mean[i][j] + track_cost_sd[i][j] for j in range(len(n_sw))],
+        alpha=0.2,
+        color=f"C{i}",
+    )
 
-    axs[7].plot(n_sw, time_mean[i], mf[i], color=f"C{i}", linewidth=lw, markersize=ms, markerfacecolor="none")
-    axs[7].fill_between(n_sw, [time_min[i][j] for j in range(len(n_sw))], [time_max[i][j] for j in range(len(n_sw))], alpha=0.2, color=f"C{i}")
+    axs[7].plot(
+        n_sw,
+        time_mean[i],
+        mf[i],
+        color=f"C{i}",
+        linewidth=lw,
+        markersize=ms,
+        markerfacecolor="none",
+    )
+    axs[7].fill_between(
+        n_sw,
+        [time_min[i][j] for j in range(len(n_sw))],
+        [time_max[i][j] for j in range(len(n_sw))],
+        alpha=0.2,
+        color=f"C{i}",
+    )
 
-for i in range(num_decent_vars+num_seq_vars+num_event_vars, num_decent_vars+num_seq_vars+num_event_vars+num_admm_vars):
-    axs[4].plot(n_sw, track_cost_mean[i], mf[i], color=f"C{i}", linewidth=lw, markersize=ms, markerfacecolor="none")
-    axs[4].fill_between(n_sw, [track_cost_mean[i][j] - track_cost_sd[i][j] for j in range(len(n_sw))], [track_cost_mean[i][j] + track_cost_sd[i][j] for j in range(len(n_sw))], alpha=0.2, color=f"C{i}")
+for i in range(
+    num_decent_vars + num_seq_vars + num_event_vars,
+    num_decent_vars + num_seq_vars + num_event_vars + num_admm_vars,
+):
+    axs[4].plot(
+        n_sw,
+        track_cost_mean[i],
+        mf[i],
+        color=f"C{i}",
+        linewidth=lw,
+        markersize=ms,
+        markerfacecolor="none",
+    )
+    axs[4].fill_between(
+        n_sw,
+        [track_cost_mean[i][j] - track_cost_sd[i][j] for j in range(len(n_sw))],
+        [track_cost_mean[i][j] + track_cost_sd[i][j] for j in range(len(n_sw))],
+        alpha=0.2,
+        color=f"C{i}",
+    )
 
-    axs[8].plot(n_sw, time_mean[i], mf[i], color=f"C{i}", linewidth=lw, markersize=ms, markerfacecolor="none")
-    axs[8].fill_between(n_sw, [time_min[i][j] for j in range(len(n_sw))], [time_max[i][j] for j in range(len(n_sw))], alpha=0.2, color=f"C{i}")
+    axs[8].plot(
+        n_sw,
+        time_mean[i],
+        mf[i],
+        color=f"C{i}",
+        linewidth=lw,
+        markersize=ms,
+        markerfacecolor="none",
+    )
+    axs[8].fill_between(
+        n_sw,
+        [time_min[i][j] for j in range(len(n_sw))],
+        [time_max[i][j] for j in range(len(n_sw))],
+        alpha=0.2,
+        color=f"C{i}",
+    )
 
-for i in range(num_decent_vars+num_seq_vars+num_event_vars):
-    axs[9].plot(n_sw, nodes_max[i], mf[i], color=f"C{i}", linewidth=lw, markersize=ms, markerfacecolor="none")
-for i in range(num_decent_vars+num_seq_vars+num_event_vars, num_decent_vars+num_seq_vars+num_event_vars+num_admm_vars):
-    axs[10].plot(n_sw, nodes_max[i], mf[i], color=f"C{i}", linewidth=lw, markersize=ms, markerfacecolor="none")
+for i in range(num_decent_vars + num_seq_vars + num_event_vars):
+    axs[9].plot(
+        n_sw,
+        nodes_max[i],
+        mf[i],
+        color=f"C{i}",
+        linewidth=lw,
+        markersize=ms,
+        markerfacecolor="none",
+    )
+for i in range(
+    num_decent_vars + num_seq_vars + num_event_vars,
+    num_decent_vars + num_seq_vars + num_event_vars + num_admm_vars,
+):
+    axs[10].plot(
+        n_sw,
+        nodes_max[i],
+        mf[i],
+        color=f"C{i}",
+        linewidth=lw,
+        markersize=ms,
+        markerfacecolor="none",
+    )
 
 for i in range(num_decent_vars):
-    axs[-1].plot(n_sw, track_cost_mean[i], mf[i], color=f"C{i}", linewidth=lw, markersize=ms, markerfacecolor="none")
-    axs[-1].fill_between(n_sw, [track_cost_mean[i][j] - track_cost_sd[i][j] for j in range(len(n_sw))], [track_cost_mean[i][j] + track_cost_sd[i][j] for j in range(len(n_sw))], alpha=0.2, color=f"C{i}")
+    axs[-1].plot(
+        n_sw,
+        track_cost_mean[i],
+        mf[i],
+        color=f"C{i}",
+        linewidth=lw,
+        markersize=ms,
+        markerfacecolor="none",
+    )
+    axs[-1].fill_between(
+        n_sw,
+        [track_cost_mean[i][j] - track_cost_sd[i][j] for j in range(len(n_sw))],
+        [track_cost_mean[i][j] + track_cost_sd[i][j] for j in range(len(n_sw))],
+        alpha=0.2,
+        color=f"C{i}",
+    )
 axs[9].set_xlabel(r"$n$")
 axs[10].set_xlabel(r"$n$")
 axs[9].set_ylabel(r"$n_{no}$")

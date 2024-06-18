@@ -10,7 +10,7 @@ from mpcrl.wrappers.envs import MonitorEpisodes
 from scipy.linalg import block_diag
 
 from env import PlatoonEnv
-from misc.common_controller_params import Params, Sim, Sim_n_task_2
+from misc.common_controller_params import Params, Sim
 from misc.spacing_policy import ConstantSpacingPolicy, SpacingPolicy
 from models import Platoon, Vehicle
 from mpcs.mpc_gear import MpcGear, MpcNonlinearGear
@@ -375,6 +375,7 @@ class LocalMpcGear(LocalMpc, MpcMldCentDecup, MpcGear):
             accel_cnstr_tightening,
         )
 
+
 class LocalMpcNonlinearGear(LocalMpc, MpcMldCentDecup, MpcNonlinearGear):
     def __init__(
         self,
@@ -507,11 +508,13 @@ class TrackingEventBasedCoordinator(MldAgent):
                 if i < self.n - 2:
                     self.agents[i].mpc.set_x_b2(self.state_guesses[i + 2])
 
-                temp_costs[i] = self.agents[i].mpc.eval_cost(x_guess, u_guess, discrete_gears = self.discrete_gears)
+                temp_costs[i] = self.agents[i].mpc.eval_cost(
+                    x_guess, u_guess, discrete_gears=self.discrete_gears
+                )
                 _, _ = self.agents[i].get_control(x_l)
                 new_cost = self.agents[i].get_predicted_cost()
 
-                if new_cost < float('inf'):
+                if new_cost < float("inf"):
                     feasible_sol_flag = True
 
                 if (temp_costs[i] - new_cost > best_cost_dec) and (
@@ -521,7 +524,9 @@ class TrackingEventBasedCoordinator(MldAgent):
                     best_idx = i
 
             if not feasible_sol_flag:
-                raise RuntimeWarning('No feasible solution found for any event based agent.')
+                raise RuntimeWarning(
+                    "No feasible solution found for any event based agent."
+                )
             # get solve times and node count
             self.temp_solve_time += max(
                 [self.agents[i].run_time for i in range(self.n)]
@@ -569,14 +574,24 @@ class TrackingEventBasedCoordinator(MldAgent):
                 break
 
         if self.discrete_gears:
-            return np.vstack(
-                (
-                    np.vstack([self.control_guesses[i][:, [0]] for i in range(self.n)]),
-                    np.vstack([self.gear_guesses[i][:, [0]] for i in range(self.n)]),
-                )
-            ), {}
+            return (
+                np.vstack(
+                    (
+                        np.vstack(
+                            [self.control_guesses[i][:, [0]] for i in range(self.n)]
+                        ),
+                        np.vstack(
+                            [self.gear_guesses[i][:, [0]] for i in range(self.n)]
+                        ),
+                    )
+                ),
+                {},
+            )
         else:
-            return np.vstack([self.control_guesses[i][:, [0]] for i in range(self.n)]), {}
+            return (
+                np.vstack([self.control_guesses[i][:, [0]] for i in range(self.n)]),
+                {},
+            )
 
     def on_timestep_end(self, env: Env, episode: int, timestep: int) -> None:
         leader_x = self.leader_x[:, timestep : timestep + self.N + 1]
@@ -678,7 +693,7 @@ def simulate(
                 spacing_policy=spacing_policy,
                 start_from_platoon=sim.start_from_platoon,
                 leader_index=leader_index,
-                ep_len=sim.ep_len
+                ep_len=sim.ep_len,
             ),
             max_episode_steps=ep_len,
         )
@@ -698,29 +713,27 @@ def simulate(
         raise ValueError(f"{sim.vehicle_model_type} is not a valid vehicle model type.")
 
     mpcs = [
-            mpc_class(
-                N,
-                systems=(
-                    systems[:2]
-                    if i == 0
-                    else (systems[-2:] if i == n - 1 else systems[i - 1 : i + 2])
-                ),
-                num_vehicles_in_front=i if i < 2 else 2,
-                num_vehicles_behind=(n - 1) - i if i > n - 3 else 2,
-                rel_leader_index=(
-                    -1
-                    if i == leader_index - 1
-                    else (
-                        0
-                        if i == leader_index
-                        else (1 if i == leader_index + 1 else None)
-                    )
-                ),
-                spacing_policy=spacing_policy,
-                thread_limit=thread_limit,
-            )
-            for i in range(n)
-        ]
+        mpc_class(
+            N,
+            systems=(
+                systems[:2]
+                if i == 0
+                else (systems[-2:] if i == n - 1 else systems[i - 1 : i + 2])
+            ),
+            num_vehicles_in_front=i if i < 2 else 2,
+            num_vehicles_behind=(n - 1) - i if i > n - 3 else 2,
+            rel_leader_index=(
+                -1
+                if i == leader_index - 1
+                else (
+                    0 if i == leader_index else (1 if i == leader_index + 1 else None)
+                )
+            ),
+            spacing_policy=spacing_policy,
+            thread_limit=thread_limit,
+        )
+        for i in range(n)
+    ]
     # agent
     agent = TrackingEventBasedCoordinator(
         mpcs,

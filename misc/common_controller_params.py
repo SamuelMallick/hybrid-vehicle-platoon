@@ -52,7 +52,9 @@ class Sim_n_task_1(Sim):
 
 
 class Sim_n_task_2(Sim):
-    def __init__(self, n: int, seed: int, leader_index: int | None = None, N: int = 6) -> None:
+    def __init__(
+        self, n: int, seed: int, leader_index: int | None = None, N: int = 6
+    ) -> None:
         super().__init__()
         self.n = n
         self.N = N

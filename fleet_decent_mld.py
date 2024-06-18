@@ -237,9 +237,7 @@ class LocalMpcGear(LocalMpcMld, MpcGear):
         accel_cnstr_tightening: float = 0.0,
         real_vehicle_as_reference: bool = False,
     ) -> None:
-        MpcGear.__init__(
-            self, pwa_system, N, thread_limit=thread_limit
-        )
+        MpcGear.__init__(self, pwa_system, N, thread_limit=thread_limit)
         self.setup_gears(N, pwa_system["F"], pwa_system["G"])
         self.setup_cost_and_constraints(
             self.u_g,
@@ -251,6 +249,7 @@ class LocalMpcGear(LocalMpcMld, MpcGear):
             accel_cnstr_tightening,
             real_vehicle_as_reference,
         )
+
 
 class LocalMpcNonlinearGear(LocalMpcMld, MpcNonlinearGear):
     def __init__(
@@ -291,7 +290,7 @@ class TrackingDecentMldCoordinator(MldAgent):
         leader_x: np.ndarray,
         ts: float,
         leader_index: int = 0,
-        velocity_estimator: Literal['none', 'two_point', 'sat'] = 'none',
+        velocity_estimator: Literal["none", "two_point", "sat"] = "none",
     ) -> None:
         super().__init__(local_mpcs[0])  # just to handle agent inititalisation
 
@@ -316,14 +315,18 @@ class TrackingDecentMldCoordinator(MldAgent):
         u = [(self.agents[i].get_control(x_l[i]))[0] for i in range(self.n)]
         if u[0].shape[0] > self.nu_l:  # includes gear choices
             # stack the continuous conttrol at the front and the discrete at the back
-            return np.vstack(
-                (
-                    np.vstack([u[i][: self.nu_l, :] for i in range(self.n)]),
-                    np.vstack([u[i][self.nu_l :, :] for i in range(self.n)]),
-                )
-            ), {}
+            return (
+                np.vstack(
+                    (
+                        np.vstack([u[i][: self.nu_l, :] for i in range(self.n)]),
+                        np.vstack([u[i][self.nu_l :, :] for i in range(self.n)]),
+                    )
+                ),
+                {},
+            )
         else:
             return np.vstack(u), {}
+
     # current state of car to be tracked is observed and propogated forward
     # to be the prediction
     def on_timestep_end(self, env: PlatoonEnv, episode: int, timestep: int) -> None:
@@ -357,11 +360,13 @@ class TrackingDecentMldCoordinator(MldAgent):
                         x_p[self.nx_l * (i + 1) + 1],
                     )
                 elif self.velocity_estimator == "sat":
-                        x_pred_back = self.extrapolate_position_two_point_estimator_saturated(
+                    x_pred_back = (
+                        self.extrapolate_position_two_point_estimator_saturated(
                             env.x[self.nx_l * (i + 1)],
                             env.x[self.nx_l * (i + 1) + 1],
                             x_p[self.nx_l * (i + 1) + 1],
                         )
+                    )
                 else:
                     x_pred_back = self.extrapolate_position_constant_vel(
                         env.x[self.nx_l * (i + 1)], env.x[self.nx_l * (i + 1) + 1]
@@ -375,10 +380,12 @@ class TrackingDecentMldCoordinator(MldAgent):
                         x_p[self.nx_l * (i - 1) + 1],
                     )
                 elif self.velocity_estimator == "sat":
-                    x_pred_front = self.extrapolate_position_two_point_estimator_saturated(
-                        env.x[self.nx_l * (i - 1)],
-                        env.x[self.nx_l * (i - 1) + 1],
-                        x_p[self.nx_l * (i - 1) + 1],
+                    x_pred_front = (
+                        self.extrapolate_position_two_point_estimator_saturated(
+                            env.x[self.nx_l * (i - 1)],
+                            env.x[self.nx_l * (i - 1) + 1],
+                            x_p[self.nx_l * (i - 1) + 1],
+                        )
                     )
                 else:
                     x_pred_front = self.extrapolate_position_constant_vel(
@@ -398,15 +405,19 @@ class TrackingDecentMldCoordinator(MldAgent):
                         x_p[self.nx_l * (i + 1) + 1],
                     )
                 elif self.velocity_estimator == "sat":
-                    x_pred_front = self.extrapolate_position_two_point_estimator_saturated(
-                        env.x[self.nx_l * (i - 1)],
-                        env.x[self.nx_l * (i - 1) + 1],
-                        x_p[self.nx_l * (i - 1) + 1],
+                    x_pred_front = (
+                        self.extrapolate_position_two_point_estimator_saturated(
+                            env.x[self.nx_l * (i - 1)],
+                            env.x[self.nx_l * (i - 1) + 1],
+                            x_p[self.nx_l * (i - 1) + 1],
+                        )
                     )
-                    x_pred_back = self.extrapolate_position_two_point_estimator_saturated(
-                        env.x[self.nx_l * (i + 1)],
-                        env.x[self.nx_l * (i + 1) + 1],
-                        x_p[self.nx_l * (i + 1) + 1],
+                    x_pred_back = (
+                        self.extrapolate_position_two_point_estimator_saturated(
+                            env.x[self.nx_l * (i + 1)],
+                            env.x[self.nx_l * (i + 1) + 1],
+                            x_p[self.nx_l * (i + 1) + 1],
+                        )
                     )
                 else:
                     x_pred_front = self.extrapolate_position_constant_vel(
@@ -438,7 +449,7 @@ class TrackingDecentMldCoordinator(MldAgent):
             x_pred[0, [k + 1]] = x_pred[0, [k]] + self.ts * x_pred[1, [k]]
             x_pred[1, [k + 1]] = x_pred[1, [k]] + dv
         return x_pred
-    
+
     def extrapolate_position_two_point_estimator_saturated(
         self, initial_pos: float, initial_vel: float, previous_vel: float
     ):
@@ -446,10 +457,10 @@ class TrackingDecentMldCoordinator(MldAgent):
         x_pred[0, [0]] = initial_pos
         x_pred[1, [0]] = initial_vel
         dv = initial_vel - previous_vel
-        for k in range(int(np.floor(self.N/2))):
+        for k in range(int(np.floor(self.N / 2))):
             x_pred[0, [k + 1]] = x_pred[0, [k]] + self.ts * x_pred[1, [k]]
             x_pred[1, [k + 1]] = x_pred[1, [k]] + dv
-        for k in range(int(np.floor(self.N/2)), self.N):
+        for k in range(int(np.floor(self.N / 2)), self.N):
             x_pred[0, [k + 1]] = x_pred[0, [k]] + self.ts * x_pred[1, [k]]
             x_pred[1, [k + 1]] = x_pred[1, [k]]
         return x_pred
@@ -461,7 +472,7 @@ def simulate(
     plot: bool = True,
     seed: int = 2,
     thread_limit: int | None = None,
-    velocity_estimator: Literal['none', 'two_point', 'sat'] = 'none',
+    velocity_estimator: Literal["none", "two_point", "sat"] = "none",
     leader_index: int = 0,
 ):
     n = sim.n  # num cars
@@ -560,4 +571,4 @@ def simulate(
 
 
 if __name__ == "__main__":
-    simulate(Sim(), save=False, seed=1, velocity_estimator='none', leader_index=0)
+    simulate(Sim(), save=False, seed=1, velocity_estimator="none", leader_index=0)

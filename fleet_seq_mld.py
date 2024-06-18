@@ -263,6 +263,7 @@ class LocalMpcGear(LocalMpcMld, MpcGear):
             real_vehicle_as_reference,
         )
 
+
 class LocalMpcNonlinearGear(LocalMpcMld, MpcNonlinearGear):
     def __init__(
         self,
@@ -387,12 +388,15 @@ class TrackingSequentialMldCoordinator(MldAgent):
 
         if u[0].shape[0] > self.nu_l:  # includes gear choices
             # stack the continuous control at the front and the discrete at the back
-            return np.vstack(
-                (
-                    np.vstack([u[i][: self.nu_l, :] for i in range(self.n)]),
-                    np.vstack([u[i][self.nu_l :, :] for i in range(self.n)]),
-                )
-            ), {}
+            return (
+                np.vstack(
+                    (
+                        np.vstack([u[i][: self.nu_l, :] for i in range(self.n)]),
+                        np.vstack([u[i][self.nu_l :, :] for i in range(self.n)]),
+                    )
+                ),
+                {},
+            )
         else:
             return np.vstack(u), {}
 
@@ -545,4 +549,4 @@ def simulate(
 
 
 if __name__ == "__main__":
-    simulate(Sim_n_task_2(n = 4, N = 5, seed = 0), save=False, seed=0, leader_index=3)
+    simulate(Sim_n_task_2(n=4, N=5, seed=0), save=False, seed=0, leader_index=3)
