@@ -6,9 +6,6 @@ __pycache__/
 # C extensions
 *.so
 
-# large data
-data_large/
-*.pkl
 
 # Distribution / packaging
 .Python
