@@ -1,3 +1,8 @@
+import os
+import sys
+
+sys.path.append(os.getcwd())
+
 from fleet_cent_mld import simulate as sim_cent
 from fleet_decent_mld import simulate as sim_decent
 from fleet_event_based import simulate as sim_event
@@ -83,7 +88,7 @@ for n in range(3, 11):
             #     )
             # except:
             #     pass
-            
+
             # try:
             #     sim_admm(
             #         sim,
