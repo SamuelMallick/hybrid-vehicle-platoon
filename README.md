@@ -48,6 +48,7 @@ The repository code is structured in the following way
 - **`env.py`** contains the environment for simulating the platoon.
 - **`fleet_{cent_mld, g_admm, seq_mld, naive_admm}.py`** are the controllers used in Distributed MPC for PWA Systems Based on Switching ADMM.
 - **`all other files`** are for data processing, or other projects that consider the platoon problem.
+- **`data`** contains '.pkl' files for data used in Distributed MPC for PWA Systems Based on Switching ADMM.
 ```
 
 ## License
