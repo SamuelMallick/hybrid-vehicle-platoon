@@ -157,7 +157,7 @@ class Vehicle:
             "F": F,
             "G": G,
         }
-    
+
     def get_gear_from_velocity(self, v: float):
         """Get a gear j that is valid for the velocity v."""
         if v < self.v_min or v > self.v_max:
@@ -193,7 +193,7 @@ class Vehicle:
         elif v < self.vl[j] or v > self.vh[j]:
             raise ValueError(f"Velocity {v} is not valid for gear {j+1}")
 
-        return (self.c_fric*v*v + self.mu*self.m*self.grav)/(self.b[j])
+        return (self.c_fric * v * v + self.mu * self.m * self.grav) / (self.b[j])
 
 
 class Platoon:

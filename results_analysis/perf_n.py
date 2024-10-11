@@ -69,7 +69,13 @@ for type in types:
         nodes[counter].append([])
         viols[counter].append([])
         for seed in seeds:
-            if all([os.path.isfile(f"data/{t}_task_2_n_{n_t}_N_{N}_seed_{seed}.pkl") for t in types for n_t in n_sw]):
+            if all(
+                [
+                    os.path.isfile(f"data/{t}_task_2_n_{n_t}_N_{N}_seed_{seed}.pkl")
+                    for t in types
+                    for n_t in n_sw
+                ]
+            ):
                 included_seeds.append(seed)
                 with open(
                     f"data/{type}_task_2_n_{n}_N_{N}_seed_{seed}.pkl",
@@ -83,7 +89,7 @@ for type in types:
                     violations = pickle.load(file)
                     leader_state = pickle.load(file)
 
-                track_costs[counter][-1].append(sum(R)[0,0])
+                track_costs[counter][-1].append(sum(R)[0, 0])
                 time_min[counter][-1].append(min(solve_times)[0])
                 time_max[counter][-1].append(max(solve_times)[0])
                 time_av[counter][-1].append(sum(solve_times)[0] / len(solve_times))
@@ -115,9 +121,9 @@ for type in types:
             viols[counter][-1] = sum(viols[counter][-1]) / len(viols[counter][-1])
     counter += 1
 missing_seeds = list(dict.fromkeys(missing_seeds))
-print(f'missing seeds: {missing_seeds}')
+print(f"missing seeds: {missing_seeds}")
 included_seeds = list(dict.fromkeys(included_seeds))
-print(f'included seeds: {included_seeds}')
+print(f"included seeds: {included_seeds}")
 
 # plotting params for all figs
 lw = 1.5  # line width
@@ -134,10 +140,7 @@ for i in range(1, counter):
     #     ]
     # )
     perf_drop.append(
-        [
-            (track_costs[i][j] - track_costs[0][j])
-            for j in range(len(track_costs[0]))
-        ]
+        [(track_costs[i][j] - track_costs[0][j]) for j in range(len(track_costs[0]))]
     )
     # perf_drop.append(
     #     [
@@ -273,7 +276,9 @@ for i in range(num_seq_vars, num_seq_vars + num_event_vars):
         markerfacecolor="none",
     )
 # axs[1].set_ylim(-25, y_lim)
-for i in range(num_seq_vars + num_event_vars, num_seq_vars + num_event_vars + num_admm_vars):
+for i in range(
+    num_seq_vars + num_event_vars, num_seq_vars + num_event_vars + num_admm_vars
+):
     axs[2].plot(
         n_sw,
         np.asarray(perf_drop[i]).reshape(len(n_sw)),

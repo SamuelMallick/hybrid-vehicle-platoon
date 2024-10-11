@@ -9,18 +9,14 @@ from misc.common_controller_params import Sim, Sim_n_task_1, Sim_n_task_2
 thread_limit = 5
 
 sim = Sim()
-sim_cent(
-    sim, save=True, plot=False, thread_limit=thread_limit
-)
-sim_seq(
-    sim, save=True, plot=False, thread_limit=thread_limit
-)
+sim_cent(sim, save=True, plot=False, thread_limit=thread_limit)
+sim_seq(sim, save=True, plot=False, thread_limit=thread_limit)
 sim_decent(sim, save=True, plot=False, thread_limit=thread_limit)
 sim_event(sim, event_iters=5, save=True, plot=False, thread_limit=thread_limit)
 sim_admm(
-        sim,
-        admm_iters=20,
-        save=True,
-        plot=False,
-        thread_limit=thread_limit,
-    )
+    sim,
+    admm_iters=20,
+    save=True,
+    plot=False,
+    thread_limit=thread_limit,
+)

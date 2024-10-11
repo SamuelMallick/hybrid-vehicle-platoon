@@ -134,7 +134,7 @@ def simulate(
                 real_vehicle_as_reference=sim.real_vehicle_as_reference,
                 ep_len=sim.ep_len,
                 leader_index=leader_index,
-                quadratic_cost=sim.quadratic_cost
+                quadratic_cost=sim.quadratic_cost,
             ),
             max_episode_steps=ep_len,
         )
@@ -150,7 +150,7 @@ def simulate(
             leader_index=leader_index,
             thread_limit=thread_limit,
             real_vehicle_as_reference=sim.real_vehicle_as_reference,
-            quadratic_cost=sim.quadratic_cost
+            quadratic_cost=sim.quadratic_cost,
         )
     elif sim.vehicle_model_type == "pwa_friction":
         mpc = MpcGearCent(
@@ -161,7 +161,7 @@ def simulate(
             leader_index=leader_index,
             thread_limit=thread_limit,
             real_vehicle_as_reference=sim.real_vehicle_as_reference,
-            quadratic_cost=sim.quadratic_cost
+            quadratic_cost=sim.quadratic_cost,
         )
     elif sim.vehicle_model_type == "nonlinear":
         mpc = MpcNonlinearGearCent(
@@ -172,7 +172,7 @@ def simulate(
             leader_index=leader_index,
             thread_limit=thread_limit,
             real_vehicle_as_reference=sim.real_vehicle_as_reference,
-            quadratic_cost=sim.quadratic_cost
+            quadratic_cost=sim.quadratic_cost,
         )
     else:
         raise ValueError(f"{sim.vehicle_model_type} is not a valid vehicle model type.")

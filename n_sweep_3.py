@@ -83,7 +83,7 @@ for n in range(3, 11):
             #     )
             # except:
             #     pass
-            
+
             # try:
             #     sim_admm(
             #         sim,

@@ -1,9 +1,25 @@
 import gurobipy as gp
 from dmpcpwa.mpc.mpc_mld_cent_decup import MpcMldCentDecup
-
+from csnlp.wrappers.mpc.hybrid_mpc import HybridMpc
 from misc.common_controller_params import Params
 from misc.spacing_policy import ConstantSpacingPolicy, SpacingPolicy
 from models import Vehicle
+
+
+class MpcMldCentNew(HybridMpc):
+    """A centralized MPC controller for the platoon using mixed-integer MLD approach."""
+
+    def __init__(
+        self,
+        N: int,
+        pwa_systems: list[dict],
+        spacing_policy: SpacingPolicy = ConstantSpacingPolicy(50),
+        leader_index: int = 0,
+        quadratic_cost: bool = True,
+        accel_cnstr_tightening: float = 0.0,
+        real_vehicle_as_reference: bool = False,
+    ) -> None:
+        super().__init__(nlp=Nlp[cs.SX](sym_type="SX"), prediction_horizon=N)
 
 
 class MpcMldCent(MpcMldCentDecup):

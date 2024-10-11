@@ -287,6 +287,7 @@ class LocalMpcGear(LocalMpcADMM, MpcGear):
             accel_cnstr_tightening,
         )
 
+
 class LocalMpcNonlinearGear(LocalMpcADMM, MpcNonlinearGear):
     def __init__(
         self,
@@ -302,7 +303,11 @@ class LocalMpcNonlinearGear(LocalMpcADMM, MpcNonlinearGear):
         accel_cnstr_tightening: float = 0.0,
     ) -> None:
         MpcNonlinearGear.__init__(
-            self, [nonlinear_system], N, thread_limit=thread_limit, constrain_first_state=False
+            self,
+            [nonlinear_system],
+            N,
+            thread_limit=thread_limit,
+            constrain_first_state=False,
         )
         self.rho = rho
         self.setup_gears(N, nonlinear_system["F"], nonlinear_system["G"])
@@ -402,7 +407,7 @@ class ADMMCoordinator(MldAgent):
                     self.agents[i].mpc.set_back_vars(self.y_back_list[i], x_pred_behind)
 
         for t in range(self.admm_iters):
-            print(f'admm iter {t} at {datetime.now()}')
+            print(f"admm iter {t} at {datetime.now()}")
             # admm x-update
             for i in range(self.n):
                 xl = state[
@@ -556,12 +561,15 @@ class ADMMCoordinator(MldAgent):
 
         if u[0].shape[0] > self.nu_l:  # includes gear choices
             # stack the continuous conttrol at the front and the discrete at the back
-            return np.vstack(
-                (
-                    np.vstack([u[i][: self.nu_l, :] for i in range(self.n)]),
-                    np.vstack([u[i][self.nu_l :, :] for i in range(self.n)]),
-                )
-            ), {}
+            return (
+                np.vstack(
+                    (
+                        np.vstack([u[i][: self.nu_l, :] for i in range(self.n)]),
+                        np.vstack([u[i][self.nu_l :, :] for i in range(self.n)]),
+                    )
+                ),
+                {},
+            )
         else:
             return np.vstack(u), {}
 
