@@ -14,7 +14,8 @@ from env import PlatoonEnv
 from misc.common_controller_params import Params, Sim
 from misc.spacing_policy import ConstantSpacingPolicy, SpacingPolicy
 from models import Platoon
-from mpcs.cent_mld import MpcMldCent, MpcMldCentNew
+from mpcs.new_mpc import MpcMldCentNew, SolverTimeRecorder
+
 from mpcs.mpc_gear import MpcGear, MpcNonlinearGear
 
 # from mpcs.mpc_gear import MpcGear
@@ -39,6 +40,7 @@ class TrackingCentralizedAgentNew(Agent):
         self.fixed_parameters["leader_traj"] = self.leader_x[
             :, timestep : (timestep + self.N + 1)
         ]
+        self.solve_times
         return super().on_timestep_end(env, episode, timestep)
 
     def on_episode_start(self, env: Env, episode: int, state) -> None:
@@ -85,7 +87,7 @@ def simulate(
         )
     )
 
-    mpc = MpcMldCentNew(N, systems[0])
+    mpc = SolverTimeRecorder(MpcMldCentNew(N, systems[0]))
 
     # agent
     agent = TrackingCentralizedAgentNew(mpc, ep_len, N, leader_x)
@@ -103,7 +105,7 @@ def simulate(
 
     print(f"Return = {sum(R.squeeze())}")
     print(f"Violations = {env.unwrapped.viol_counter}")
-    print(f"Run_times_sum: {sum(agent.solve_times)}")
+    print(f"Run_times_sum: {sum(mpc.solver_time)}")
     print(f"average_bin_vars: {sum(agent.bin_var_counts)/len(agent.bin_var_counts)}")
 
     if plot:

@@ -14,7 +14,7 @@ from env import PlatoonEnv
 from misc.common_controller_params import Params, Sim
 from misc.spacing_policy import ConstantSpacingPolicy, SpacingPolicy
 from models import Platoon
-from mpcs.cent_mld import MpcMldCent, MpcMldCentNew
+from mpcs.cent_mld import MpcMldCent
 from mpcs.mpc_gear import MpcGear, MpcNonlinearGear
 
 # from mpcs.mpc_gear import MpcGear
@@ -164,8 +164,6 @@ def simulate(
             max_episode_steps=ep_len,
         )
     )
-
-    o = MpcMldCentNew(N, systems[0])
 
     # mpcs
     if sim.vehicle_model_type == "pwa_gear":
