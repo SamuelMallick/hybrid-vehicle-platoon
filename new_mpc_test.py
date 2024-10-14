@@ -1,22 +1,16 @@
 import pickle
 
-from mpcrl import Agent
 import numpy as np
-from dmpcpwa.agents.mld_agent import MldAgent
 from dmpcpwa.mpc.mpc_mld import MpcMld
-from dmpcpwa.mpc.mpc_mld_cent_decup import MpcMldCentDecup
 from gymnasium import Env
 from gymnasium.wrappers import TimeLimit
+from mpcrl import Agent
 from mpcrl.wrappers.envs import MonitorEpisodes
-from scipy.linalg import block_diag
 
 from env import PlatoonEnv
 from misc.common_controller_params import Params, Sim
-from misc.spacing_policy import ConstantSpacingPolicy, SpacingPolicy
 from models import Platoon
 from mpcs.new_mpc import MpcMldCentNew, SolverTimeRecorder
-
-from mpcs.mpc_gear import MpcGear, MpcNonlinearGear
 
 # from mpcs.mpc_gear import MpcGear
 from plot_fleet import plot_fleet

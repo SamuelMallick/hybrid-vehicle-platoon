@@ -1,29 +1,28 @@
-from typing import TypeVar, Any
-import gurobipy as gp
-from dmpcpwa.mpc.mpc_mld_cent_decup import MpcMldCentDecup
-from dmpcpwa.utils.pwa_models import cent_from_dist
-from csnlp.wrappers.mpc.hybrid_mpc import HybridMpc
-from csnlp import Nlp
-from misc.common_controller_params import Params
-from misc.spacing_policy import ConstantSpacingPolicy, SpacingPolicy
-from models import Vehicle
+from typing import Any, TypeVar
+
 import casadi as cs
 import numpy as np
+from csnlp import Nlp
 from csnlp.wrappers import Wrapper
+from csnlp.wrappers.mpc.hybrid_mpc import HybridMpc
+
+from misc.common_controller_params import Params
 
 SymType = TypeVar("SymType", cs.SX, cs.MX)
 
+
 class SolverTimeRecorder(Wrapper[SymType]):
     """A wrapper class of that records the time taken by the solver."""
- 
+
     def __init__(self, *args: Any, **kwds: Any) -> None:
         super().__init__(*args, **kwds)
         self.solver_time: list[float] = []
- 
+
     def __call__(self, *args: Any, **kwds: Any) -> Any:
         sol = super().__call__(*args, **kwds)
         self.solver_time.append(sol.stats["t_wall_total"])
         return sol
+
 
 class MpcMldCentNew(HybridMpc):
     """A centralized MPC controller for the platoon using mixed-integer MLD approach."""
@@ -92,13 +91,13 @@ class MpcMldCentNew(HybridMpc):
             "accel", self.x[1, 1:] - self.x[1, :-1], "<=", self.a_acc * self.ts
         )
         opts = {
-                "expand": True,
-                "show_eval_warnings": True,
-                "warn_initial_bounds": True,
-                "print_time": False,
-                "record_time": True,
-                "bound_consistency": True,
-                "calc_lam_x": True,
-                "calc_lam_p": False,
+            "expand": True,
+            "show_eval_warnings": True,
+            "warn_initial_bounds": True,
+            "print_time": False,
+            "record_time": True,
+            "bound_consistency": True,
+            "calc_lam_x": True,
+            "calc_lam_p": False,
         }
         self.init_solver(opts, solver="bonmin")

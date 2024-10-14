@@ -1,8 +1,9 @@
+import os
 import pickle
 import statistics
+
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 
 plt.rc("text", usetex=True)
 plt.rc("font", size=14)

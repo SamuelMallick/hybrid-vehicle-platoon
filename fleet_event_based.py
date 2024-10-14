@@ -10,7 +10,7 @@ from mpcrl.wrappers.envs import MonitorEpisodes
 from scipy.linalg import block_diag
 
 from env import PlatoonEnv
-from misc.common_controller_params import Params, Sim, Sim_n_task_2
+from misc.common_controller_params import Params, Sim
 from misc.spacing_policy import ConstantSpacingPolicy, SpacingPolicy
 from models import Platoon, Vehicle
 from mpcs.mpc_gear import MpcGear, MpcNonlinearGear

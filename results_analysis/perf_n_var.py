@@ -1,10 +1,8 @@
 import pickle
+import statistics
 
-from matplotlib import ticker
 import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
-import statistics
 from matplotlib.gridspec import GridSpec
 
 plt.rc("text", usetex=True)
@@ -123,7 +121,6 @@ for type_indx, type in enumerate(types):
                     viols[type_indx][n_indx][seed_indx] += v
                 except:
                     print(f"no seed {seed}")
-        pass
 
 
 # plotting params for all figs

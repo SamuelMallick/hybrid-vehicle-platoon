@@ -1,13 +1,9 @@
 import gurobipy as gp
 from dmpcpwa.mpc.mpc_mld_cent_decup import MpcMldCentDecup
-from dmpcpwa.utils.pwa_models import cent_from_dist
-from csnlp.wrappers.mpc.hybrid_mpc import HybridMpc
-from csnlp import Nlp
+
 from misc.common_controller_params import Params
 from misc.spacing_policy import ConstantSpacingPolicy, SpacingPolicy
 from models import Vehicle
-import casadi as cs
-import numpy as np
 
 
 class MpcMldCent(MpcMldCentDecup):

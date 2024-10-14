@@ -1,12 +1,12 @@
 import pickle
 
-from mpcrl import Agent
 import numpy as np
 from dmpcpwa.agents.mld_agent import MldAgent
 from dmpcpwa.mpc.mpc_mld import MpcMld
 from dmpcpwa.mpc.mpc_mld_cent_decup import MpcMldCentDecup
 from gymnasium import Env
 from gymnasium.wrappers import TimeLimit
+from mpcrl import Agent
 from mpcrl.wrappers.envs import MonitorEpisodes
 from scipy.linalg import block_diag
 
