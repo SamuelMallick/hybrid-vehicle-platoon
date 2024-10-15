@@ -4,7 +4,7 @@ import casadi as cs
 import numpy as np
 from csnlp import Nlp
 from csnlp.wrappers import Wrapper
-from csnlp.wrappers.mpc.hybrid_mpc import HybridMpc
+from csnlp.wrappers.mpc.pwa_mpc import PwaMpc
 
 from misc.common_controller_params import Params
 
@@ -24,7 +24,7 @@ class SolverTimeRecorder(Wrapper[SymType]):
         return sol
 
 
-class MpcMldCentNew(HybridMpc):
+class MpcMldCentNew(PwaMpc):
     """A centralized MPC controller for the platoon using mixed-integer MLD approach."""
 
     Q_x = Params.Q_x
@@ -67,6 +67,7 @@ class MpcMldCentNew(HybridMpc):
                 (self.x[:, k] - self.leader_traj[:, k]).T
                 @ self.Q_x
                 @ (self.x[:, k] - self.leader_traj[:, k])
+                + self.u[:, 0]**3
                 for k in range(self.N + 1)
             ]
         )
@@ -90,6 +91,16 @@ class MpcMldCentNew(HybridMpc):
         self.constraint(
             "accel", self.x[1, 1:] - self.x[1, :-1], "<=", self.a_acc * self.ts
         )
+
+        bonmin_opts = {}
+        bonmin_opts['print_level'] = 0 # up to 12 level verbosity
+        bonmin_opts['sb'] = "yes" # no ipopt banner
+        bonmin_opts['bb_log_level'] = 0
+        bonmin_opts["nlp_log_level"] = 0
+        bonmin_opts["nlp_log_at_root"] = 0
+        bonmin_opts["oa_log_level"] = 0
+        bonmin_opts["lp_log_level"] = 0
+        bonmin_opts["fp_log_level"] = 0
         opts = {
             "expand": True,
             "show_eval_warnings": True,
@@ -99,5 +110,6 @@ class MpcMldCentNew(HybridMpc):
             "bound_consistency": True,
             "calc_lam_x": True,
             "calc_lam_p": False,
+            "bonmin": bonmin_opts,
         }
         self.init_solver(opts, solver="bonmin")

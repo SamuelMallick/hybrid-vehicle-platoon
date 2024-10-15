@@ -6,6 +6,7 @@ from gymnasium import Env
 from gymnasium.wrappers import TimeLimit
 from mpcrl import Agent
 from mpcrl.wrappers.envs import MonitorEpisodes
+from numpy._typing import NDArray
 
 from env import PlatoonEnv
 from misc.common_controller_params import Params, Sim
@@ -17,16 +18,11 @@ from plot_fleet import plot_fleet
 
 np.random.seed(2)
 
-
 class TrackingCentralizedAgentNew(Agent):
     def __init__(self, mpc: MpcMld, ep_len: int, N: int, leader_x: np.ndarray) -> None:
         self.ep_len = ep_len
         self.N = N
         self.leader_x = leader_x
-
-        self.solve_times = np.zeros((ep_len, 1))
-        self.node_counts = np.zeros((ep_len, 1))
-        self.bin_var_counts = np.zeros((ep_len, 1))
         super().__init__(mpc, mpc.fixed_parameters)
 
     def on_timestep_end(self, env: Env, episode: int, timestep: int) -> None:
@@ -40,7 +36,6 @@ class TrackingCentralizedAgentNew(Agent):
     def on_episode_start(self, env: Env, episode: int, state) -> None:
         self.fixed_parameters["leader_traj"] = self.leader_x[:, 0 : self.N + 1]
         return super().on_episode_start(env, episode, state)
-
 
 def simulate(
     sim: Sim,
@@ -100,7 +95,6 @@ def simulate(
     print(f"Return = {sum(R.squeeze())}")
     print(f"Violations = {env.unwrapped.viol_counter}")
     print(f"Run_times_sum: {sum(mpc.solver_time)}")
-    print(f"average_bin_vars: {sum(agent.bin_var_counts)/len(agent.bin_var_counts)}")
 
     if plot:
         plot_fleet(n, X, U, R, leader_x, violations=env.unwrapped.viol_counter[0])
@@ -113,8 +107,7 @@ def simulate(
             pickle.dump(X, file)
             pickle.dump(U, file)
             pickle.dump(R, file)
-            pickle.dump(agent.solve_times, file)
-            pickle.dump(agent.node_counts, file)
+            pickle.dump(mpc.solver_time, file)
             pickle.dump(env.unwrapped.viol_counter[0], file)
             pickle.dump(leader_x, file)
 
